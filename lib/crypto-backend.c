@@ -23,10 +23,10 @@
 #include "errors.h"
 #include "gnutls_int.h"
 #include <gnutls/crypto.h>
+#include <dlfcn.h>
 #include "crypto-backend.h"
 #include "crypto.h"
 #include "mpi.h"
-#include "pk.h"
 #include "random.h"
 #include "cipher_int.h"
 
@@ -34,6 +34,7 @@
 int crypto_mac_prio = INT_MAX;
 int crypto_digest_prio = INT_MAX;
 int crypto_cipher_prio = INT_MAX;
+int crypto_pk_prio = INT_MAX;
 
 typedef struct algo_list {
 	int algorithm;
@@ -187,6 +188,8 @@ _gnutls_get_crypto_cipher(gnutls_cipher_algorithm_t algo)
 	return _get_algo(&glob_cl, algo);
 }
 
+
+
 /**
  * gnutls_crypto_register_cipher:
  * @algorithm: is the gnutls algorithm identifier
@@ -318,6 +321,40 @@ int gnutls_crypto_rnd_register(int priority, const gnutls_crypto_rnd_st *s)
 	if (crypto_rnd_prio >= priority) {
 		memcpy(&_gnutls_rnd_ops, s, sizeof(*s));
 		crypto_rnd_prio = priority;
+		return 0;
+	}
+
+	return GNUTLS_E_CRYPTO_ALREADY_REGISTERED;
+}
+
+extern int crypto_prf_prio;
+extern gnutls_crypto_prf_st* _gnutls_prf_ops;
+
+/*-
+ * gnutls_crypto_prf_register:
+ * @priority: is the priority of the generator
+ * @s: is a structure holding new generator's data
+ *
+ * This function will register a random generator to be used by
+ * gnutls.  Any generator registered will override the included
+ * generator and by convention kernel implemented generators have
+ * priority of 90 and CPU-assisted of 80. The generator with the lowest priority will be
+ * used by gnutls.
+ *
+ * This function should be called before gnutls_global_init().
+ *
+ * For simplicity you can use the convenience
+ * gnutls_crypto_prf_register() macro.
+ *
+ * Returns: %GNUTLS_E_SUCCESS on success, otherwise a negative error code.
+ *
+ * Since: 2.6.0
+ -*/
+int gnutls_crypto_prf_register(int priority, const gnutls_crypto_prf_st *s)
+{
+	if (crypto_prf_prio >= priority) {
+		memcpy(&_gnutls_prf_ops, s, sizeof(*s));
+		crypto_prf_prio = priority;
 		return 0;
 	}
 
@@ -462,4 +499,59 @@ int gnutls_crypto_register_digest(gnutls_digest_algorithm_t algorithm,
 	_gnutls_debug_log(
 		"called the deprecated gnutls_crypto_register_digest()\n");
 	return 0;
+}
+
+int gnutls_load_crypto_provider(const char *provider_path)
+{
+    void *handle;
+
+    if (provider_path == NULL) {
+        fprintf(stderr, "Error: Provider path must be specified\n");
+        return -1;
+    }
+
+    fprintf(stderr, "Loading crypto provider from: %s\n", provider_path);
+
+    handle = dlopen(provider_path, RTLD_NOW);
+    if (handle == NULL) {
+        fprintf(stderr, "Failed to load provider: %s\n", dlerror());
+        return -1;
+    }
+
+    {
+        typedef gnutls_crypto_rnd_st*(*rnd_ops_func)(void);
+        rnd_ops_func func = (rnd_ops_func)dlsym(handle, "gnutls_get_rnd_ops");
+        if (func != NULL) {
+            gnutls_crypto_rnd_register(80, func());
+        }
+    }
+
+    {
+        typedef gnutls_crypto_prf_st*(*prf_ops_func)(void);
+        prf_ops_func func = (prf_ops_func)dlsym(handle, "gnutls_get_prf_ops");
+        if (func != NULL) {
+            gnutls_crypto_prf_register(80, func());
+        }
+    }
+
+    fprintf(stderr, "Successfully loaded crypto provider\n");
+    return 0;
+}
+
+static algo_list glob_pk = { GNUTLS_PK_UNKNOWN, 0, NULL, 0, NULL };
+
+/* Registration function for public key algorithms */
+int gnutls_crypto_single_pk_register(gnutls_pk_algorithm_t algorithm,
+                                    int priority,
+                                    const gnutls_crypto_pk_st *s,
+                                    int free_s)
+{
+    return _algo_register(&glob_pk, algorithm, priority, (void *)s, free_s);
+}
+
+/* Retrieval function for public key algorithms */
+const gnutls_crypto_pk_st *
+_gnutls_get_crypto_pk(gnutls_pk_algorithm_t algo)
+{
+    return _get_algo(&glob_pk, algo);
 }

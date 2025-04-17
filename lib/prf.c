@@ -33,6 +33,17 @@
 #include "state.h"
 #include "algorithms.h"
 
+extern gnutls_crypto_prf_st _gnutls_prf_ops;
+
+int gnutls_prf_gen(gnutls_mac_algorithm_t mac, size_t master_size,
+                   const void *master, size_t label_size, const char *label,
+                   size_t seed_size, const uint8_t *seed, size_t outsize,
+                   char *out)
+{
+    return _gnutls_prf_ops.raw(mac, master_size, master, label_size, label,
+         seed_size, seed, outsize, out);
+}
+
 /**
  * gnutls_prf_raw:
  * @session: is a #gnutls_session_t type.
@@ -80,11 +91,11 @@ int gnutls_prf_raw(gnutls_session_t session, size_t label_size,
 	if (session->security_parameters.prf == NULL)
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 
-	ret = _gnutls_prf_raw(session->security_parameters.prf->id,
-			      GNUTLS_MASTER_SIZE,
-			      session->security_parameters.master_secret,
-			      label_size, label, seed_size, (uint8_t *)seed,
-			      outsize, out);
+	ret = gnutls_prf_gen(session->security_parameters.prf->id,
+			     GNUTLS_MASTER_SIZE,
+			     session->security_parameters.master_secret,
+			     label_size, label, seed_size, (uint8_t *)seed,
+			     outsize, out);
 
 	return ret;
 }
@@ -321,10 +332,10 @@ int gnutls_prf(gnutls_session_t session, size_t label_size, const char *label,
 		memcpy(seed + 2 * GNUTLS_RANDOM_SIZE, extra, extra_size);
 	}
 
-	ret = _gnutls_prf_raw(session->security_parameters.prf->id,
-			      GNUTLS_MASTER_SIZE,
-			      session->security_parameters.master_secret,
-			      label_size, label, seedsize, seed, outsize, out);
+	ret = gnutls_prf_gen(session->security_parameters.prf->id,
+			     GNUTLS_MASTER_SIZE,
+			     session->security_parameters.master_secret,
+			     label_size, label, seedsize, seed, outsize, out);
 
 	gnutls_free(seed);
 

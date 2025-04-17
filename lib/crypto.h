@@ -23,6 +23,7 @@
 #ifndef GNUTLS_LIB_CRYPTO_H
 #define GNUTLS_LIB_CRYPTO_H
 
+#include <gnutls/gnutls.h>
 const gnutls_crypto_cipher_st *
 _gnutls_get_crypto_cipher(gnutls_cipher_algorithm_t algo);
 const gnutls_crypto_digest_st *
@@ -36,5 +37,6 @@ int _gnutls_crypto_register_cipher(gnutls_cipher_algorithm_t algorithm,
 				   gnutls_cipher_encrypt_func encrypt,
 				   gnutls_cipher_decrypt_func decrypt,
 				   gnutls_cipher_deinit_func deinit);
+const gnutls_crypto_pk_st *_gnutls_get_crypto_pk(gnutls_pk_algorithm_t algo);
 
 #endif /* GNUTLS_LIB_CRYPTO_H */

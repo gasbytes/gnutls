@@ -125,3 +125,10 @@ int _gnutls_prf_raw(gnutls_mac_algorithm_t mac, size_t master_size,
 
 	return 0;
 }
+
+int crypto_prf_prio = INT_MAX;
+
+gnutls_crypto_prf_st _gnutls_prf_ops = {
+    .raw = _gnutls_prf_raw,
+};
+

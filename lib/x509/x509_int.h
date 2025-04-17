@@ -140,6 +140,10 @@ struct pbkdf2_params {
 };
 
 typedef struct gnutls_x509_privkey_int {
+    void *pk_ctx;
+	gnutls_privkey_type_t type;
+	gnutls_pk_algorithm_t pk_algorithm;
+
 	/* the size of params depends on the public
 	 * key algorithm
 	 */

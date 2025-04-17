@@ -599,7 +599,9 @@ static int cert_callback(gnutls_session_t session)
 			app_exit(1);
 		}
 
-		write(priv->fd, t.data, t.size);
+		if (write(priv->fd, t.data, t.size) != t.size) {
+			app_exit(1);
+                }
 		gnutls_free(t.data);
 	}
 	priv->found = 1;

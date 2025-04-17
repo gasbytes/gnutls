@@ -191,7 +191,7 @@ int gnutls_rnd(gnutls_rnd_level_t level, void *data, size_t len);
 
 void gnutls_rnd_refresh(void);
 
-/* API to override ciphers and MAC algorithms 
+/* API to override ciphers and MAC algorithms
  */
 
 typedef int (*gnutls_cipher_init_func)(gnutls_cipher_algorithm_t, void **ctx,
@@ -261,6 +261,41 @@ int gnutls_crypto_register_mac(
 	gnutls_mac_deinit_func deinit,
 	gnutls_mac_fast_func hash_fast) _GNUTLS_GCC_ATTR_DEPRECATED;
 
+typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
+                                          gnutls_pk_algorithm_t algo,
+                                          unsigned int bits);
+
+typedef int (*gnutls_pk_export_pubkey_func)(void **pub_key_ctx, void *priv_key_ctx, const void* pubkey);
+typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, const void *privkey,
+        const gnutls_datum_t * data, gnutls_x509_crt_fmt_t format);
+typedef int (*gnutls_pk_import_pubkey_x509_func)(void **ctx, const void *pubkey,
+        gnutls_datum_t * data, unsigned int flags);
+typedef int (*gnutls_pk_pubkey_encrypt_func)(void *ctx, gnutls_pubkey_t key, const gnutls_datum_t * plaintext, gnutls_datum_t * ciphertext);
+typedef int (*gnutls_pk_privkey_decrypt_func)(void *ctx, gnutls_privkey_t key, const gnutls_datum_t * ciphertext, gnutls_datum_t * plaintext);
+typedef int (*gnutls_pk_import_privkey_url_func)(void **ctx, const void *privkey, const char *url);
+typedef int (*gnutls_pk_import_pubkey_url_func)(void **ctx, const void *pubkey, const char *url);
+typedef int (*gnutls_pk_sign_func)(void *ctx,
+                                   const void *privkey,
+                                   gnutls_digest_algorithm_t hash,
+                                   const void *data,
+                                   const void *signature);
+typedef int (*gnutls_pk_sign_hash_func)(void *ctx, const void *privkey,
+                                      gnutls_digest_algorithm_t hash_algo,
+                                      const gnutls_datum_t *hash_data,
+                                      gnutls_datum_t *signature);
+typedef int (*gnutls_pk_verify_hash_func)(void *ctx, const void *pubkey,
+                                        gnutls_sign_algorithm_t algo,
+                                        const gnutls_datum_t *hash,
+                                        const gnutls_datum_t *signature);
+typedef int (*gnutls_pk_verify_func)(void *ctx,
+                                     const void *pubkey,
+                                     gnutls_sign_algorithm_t hash,
+                                     const void *data,
+                                     const void *signature);
+typedef int (*gnutls_pk_derive_shared_secret_func)(void *ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
+typedef void (*gnutls_pk_deinit_func)(void *ctx);
+typedef int (*gnutls_pk_copy_func)(void **dst, void *src, gnutls_pk_algorithm_t algo);
+
 typedef int (*gnutls_digest_init_func)(gnutls_digest_algorithm_t, void **ctx);
 typedef int (*gnutls_digest_hash_func)(void *ctx, const void *text,
 				       size_t textsize);
@@ -298,6 +333,12 @@ int gnutls_encode_gost_rs_value(gnutls_datum_t *sig_value,
 				const gnutls_datum_t *s);
 int gnutls_decode_gost_rs_value(const gnutls_datum_t *sig_value,
 				gnutls_datum_t *r, gnutls_datum_t *s);
+
+typedef int (*gnutls_prf_raw_func)(gnutls_mac_algorithm_t mac,
+                                   size_t master_size, const void *master,
+                                   size_t label_size, const char *label,
+                                   size_t seed_size, const unsigned char *seed,
+                                   size_t outsize, char *out);
 
 #ifdef __cplusplus
 }

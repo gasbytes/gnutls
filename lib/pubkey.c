@@ -19,6 +19,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>
  */
 
+
+#include <config.h>
+#include <stdint.h>
+#include "crypto-backend.h"
+#include "crypto.h"
 #include "gnutls_int.h"
 #include <gnutls/pkcs11.h>
 #include <stdio.h>
@@ -155,6 +160,12 @@ int gnutls_pubkey_init(gnutls_pubkey_t *key)
  **/
 void gnutls_pubkey_deinit(gnutls_pubkey_t key)
 {
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->deinit_backend != NULL) {
+        cc->deinit_backend(key->pk_ctx);
+        return;
+    }
 	if (!key)
 		return;
 	gnutls_pk_params_release(&key->params);
@@ -179,6 +190,20 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 			      unsigned int flags)
 {
 	int ret;
+	int result;
+
+	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->import_pubkey_x509_backend != NULL) {
+		result = cc->import_pubkey_x509_backend(&key->pk_ctx, key, &crt->der, flags);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+    }
 
 	gnutls_pk_params_release(&key->params);
 	/* params initialized in _gnutls_x509_crt_get_mpis */
@@ -260,6 +285,20 @@ int gnutls_pubkey_import_x509_crq(gnutls_pubkey_t key, gnutls_x509_crq_t crq,
 int gnutls_pubkey_import_privkey(gnutls_pubkey_t key, gnutls_privkey_t pkey,
 				 unsigned int usage, unsigned int flags)
 {
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
+	int result;
+
+    if (cc != NULL && cc->export_pubkey_backend != NULL) {
+        key->pk_algorithm = pkey->pk_algorithm;
+        result = cc->export_pubkey_backend(&key->pk_ctx, pkey->pk_ctx, key);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+    }
+
 	gnutls_pk_params_release(&key->params);
 	gnutls_pk_params_init(&key->params);
 
@@ -1664,6 +1703,15 @@ int gnutls_pubkey_import_url(gnutls_pubkey_t key, const char *url,
 			     unsigned int flags)
 {
 	unsigned i;
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->import_pubkey_url_backend != NULL) {
+        if (cc->import_pubkey_url_backend(&key->pk_ctx, key, url) < 0) {
+            return gnutls_assert_val(-1);
+        }
+
+        return 0;
+    }
 
 	for (i = 0; i < _gnutls_custom_urls_size; i++) {
 		if (strncmp(url, _gnutls_custom_urls[i].name,
@@ -2176,6 +2224,20 @@ int gnutls_pubkey_verify_data2(gnutls_pubkey_t pubkey,
 	const mac_entry_st *me;
 	gnutls_x509_spki_st params;
 	const gnutls_sign_entry_st *se;
+	int result;
+
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pubkey->pk_algorithm);
+
+    if (cc != NULL && cc->verify_backend != NULL) {
+		result = cc->verify_backend(pubkey->pk_ctx, &pubkey->params.raw_pub, algo, data, signature);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+    }
+
 
 	if (pubkey == NULL) {
 		gnutls_assert();
@@ -2247,6 +2309,19 @@ int gnutls_pubkey_verify_hash2(gnutls_pubkey_t key,
 	gnutls_x509_spki_st params;
 	const gnutls_sign_entry_st *se;
 	int ret;
+	int result;
+
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->verify_hash_backend!= NULL) {
+		result = cc->verify_hash_backend(key->pk_ctx, key, algo, hash, signature);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+    }
 
 	if (key == NULL) {
 		gnutls_assert();
@@ -2330,6 +2405,16 @@ int gnutls_pubkey_encrypt_data(gnutls_pubkey_t key, unsigned int flags,
 			       const gnutls_datum_t *plaintext,
 			       gnutls_datum_t *ciphertext)
 {
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->pubkey_encrypt_backend != NULL) {
+        if (cc->pubkey_encrypt_backend(&key->pk_ctx, key, plaintext, ciphertext) < 0) {
+            return gnutls_assert_val(-1);
+        }
+
+        return 0;
+    }
+
 	if (key == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;

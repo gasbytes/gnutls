@@ -24,6 +24,7 @@
 
 #include "gnutls_int.h"
 #include "datum.h"
+#include "crypto-backend.h"
 #include "global.h"
 #include "errors.h"
 #include "tls-sig.h"
@@ -35,6 +36,7 @@
 #include "mpi.h"
 #include "ecc.h"
 #include "pin.h"
+
 
 /**
  * gnutls_x509_privkey_init:
@@ -556,6 +558,19 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 {
 	int result = 0, need_free = 0;
 	gnutls_datum_t _data;
+
+	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
+		result = cc->import_privkey_x509_backend(&key->pk_ctx, key, data, format);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+    }
 
 	if (key == NULL) {
 		gnutls_assert();

@@ -22,6 +22,9 @@
  */
 
 #include "gnutls_int.h"
+#include <stdlib.h>
+#include <stdint.h>
+#include "crypto-backend.h"
 #include "errors.h"
 #include <libtasn1.h>
 #include "dh.h"
@@ -368,6 +371,20 @@ static int _gnutls_global_init(unsigned constructor)
 	_gnutls_register_accel_crypto();
 	_gnutls_cryptodev_init();
 	_gnutls_afalg_init();
+
+    /* we check if PROVIDER_PATH was set, if not, we set the default value */
+    const char *path_value = getenv("PROVIDER_PATH");
+    if (path_value == NULL) {
+        _gnutls_debug_log("PROVIDER_PATH was not set, setting to default value: /opt/wolfssl-gnutls-wrapper/lib/");
+        path_value = "/opt/wolfssl-gnutls-wrapper/lib/libgnutls-wolfssl-wrapper.so";
+    }
+
+    if (gnutls_load_crypto_provider(path_value) != 0) {
+        gnutls_assert();
+        goto out;
+    }
+
+
 #ifdef HAVE_LEANCRYPTO
 	lc_init(0);
 #endif

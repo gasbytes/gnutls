@@ -31,11 +31,6 @@
 #include <cmocka.h>
 #include "hex.h"
 
-int _gnutls_prf_raw(gnutls_mac_algorithm_t mac, size_t master_size,
-		    const void *master, size_t label_size, const char *label,
-		    size_t seed_size, const uint8_t *seed, size_t outsize,
-		    char *out);
-
 #define MATCH_FUNC(fname, mac, dsecret, dseed, dlabel, doutput)             \
 	static void fname(void **glob_state)                                \
 	{                                                                   \
@@ -45,10 +40,10 @@ int _gnutls_prf_raw(gnutls_mac_algorithm_t mac, size_t master_size,
 		gnutls_datum_t label = dlabel;                              \
 		gnutls_datum_t output = doutput;                            \
 		int _rval;                                                  \
-		_rval = _gnutls_prf_raw(mac, secret.size, secret.data,      \
-					label.size, (char *)label.data,     \
-					seed.size, seed.data, output.size,  \
-					tmp);                               \
+		_rval = gnutls_prf_gen(mac, secret.size, secret.data,       \
+				       label.size, (char *)label.data,      \
+				       seed.size, seed.data, output.size,   \
+				       tmp);                                \
 		assert_int_equal(_rval, 0);                                 \
 		assert_int_equal(memcmp(tmp, output.data, output.size), 0); \
 		gnutls_free(secret.data);                                   \

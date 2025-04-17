@@ -30,6 +30,15 @@ typedef int (*gnutls_privkey_pk_params_func)(gnutls_privkey_t key,
 					     gnutls_pk_params_st *params);
 
 struct gnutls_privkey_st {
+    gnutls_pk_generate_func generate_backend;
+    gnutls_pk_import_privkey_x509_func import_privkey_x509_backend;
+    gnutls_pk_import_privkey_url_func import_privkey_url_backend;
+    gnutls_pk_privkey_decrypt_func privkey_decrypt_backend;
+    gnutls_pk_derive_shared_secret_func derive_shared_secret_backend;
+    gnutls_pk_sign_func sign_backend;
+    gnutls_pk_sign_hash_func sign_hash_backend;
+    gnutls_pk_deinit_func deinit_backend;
+    void *pk_ctx;
 	gnutls_privkey_type_t type;
 	gnutls_pk_algorithm_t pk_algorithm;
 
@@ -57,6 +66,18 @@ struct gnutls_privkey_st {
 };
 
 struct gnutls_pubkey_st {
+    gnutls_pk_generate_func generate_backend;
+    gnutls_pk_export_pubkey_func export_pubkey_backend;
+    gnutls_pk_import_pubkey_url_func import_pubkey_url_backend;
+    gnutls_pk_import_pubkey_x509_func import_pubkey_x509_backend;
+    gnutls_pk_pubkey_encrypt_func pubkey_encrypt_backend;
+    gnutls_pk_derive_shared_secret_func derive_shared_secret_backend;
+    gnutls_pk_verify_func verify_backend;
+    gnutls_pk_verify_hash_func verify_hash_backend;
+    gnutls_pk_deinit_func deinit_backend;
+    void *pk_ctx;
+	gnutls_privkey_type_t type;
+	gnutls_pk_algorithm_t pk_algorithm;
 	unsigned int bits; /* an indication of the security parameter */
 
 	/* the size of params depends on the public
