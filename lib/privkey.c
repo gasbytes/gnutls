@@ -1140,17 +1140,20 @@ int gnutls_privkey_generate2(gnutls_privkey_t pkey, gnutls_pk_algorithm_t algo,
 			     unsigned data_size)
 {
 	int ret;
+	int result;
 
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(algo);
 
     if (cc != NULL && cc->generate_backend != NULL) {
         pkey->pk_algorithm = algo;
 
-        if (cc->generate_backend(&pkey->pk_ctx, pkey, algo, bits) < 0) {
-                return gnutls_assert_val(-1);
-        }
-
-        return 0;
+        result = cc->generate_backend(&pkey->pk_ctx, pkey, algo, bits);
+        if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+                gnutls_assert();
+                return result;
+        } else if (result == 0) {
+			return 0;
+		}
     }
 
 	ret = gnutls_x509_privkey_init(&pkey->key.x509);
@@ -2171,15 +2174,17 @@ int gnutls_privkey_derive_secret(gnutls_privkey_t privkey,
 				 const gnutls_datum_t *nonce,
 				 gnutls_datum_t *secret, unsigned int flags)
 {
-
+	int result = 0;
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(privkey->pk_algorithm);
 
     if (cc != NULL && cc->derive_shared_secret_backend != NULL) {
-        if (cc->derive_shared_secret_backend(privkey->pk_ctx, privkey, pubkey, nonce, secret) < 0) {
-            return gnutls_assert_val(-1);
-        }
-
-        return 0;
+        result = cc->derive_shared_secret_backend(pubkey->pk_ctx, privkey->pk_ctx, &privkey->key.x509->params.raw_priv, &pubkey->params.raw_pub, nonce, secret);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
     }
 
 	if (unlikely(privkey == NULL || privkey->type != GNUTLS_PRIVKEY_X509)) {

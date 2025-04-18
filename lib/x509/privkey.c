@@ -2009,6 +2009,21 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 	unsigned i;
 	gnutls_x509_spki_t spki = NULL;
 	gnutls_dh_params_t dh_params = NULL;
+	int result;
+
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(algo);
+
+	if (cc != NULL && cc->generate_backend != NULL) {
+		key->pk_algorithm = algo;
+
+		result = cc->generate_backend(&key->pk_ctx, key, algo, bits);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
 
 	if (key == NULL) {
 		gnutls_assert();
