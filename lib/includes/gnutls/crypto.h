@@ -292,7 +292,7 @@ typedef int (*gnutls_pk_verify_func)(void *ctx,
                                      gnutls_sign_algorithm_t hash,
                                      const void *data,
                                      const void *signature);
-typedef int (*gnutls_pk_derive_shared_secret_func)(void *ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
+typedef int (*gnutls_pk_derive_shared_secret_func)(void* pubkey_ctx, void* privkey_ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
 typedef void (*gnutls_pk_deinit_func)(void *ctx);
 typedef int (*gnutls_pk_copy_func)(void **dst, void *src, gnutls_pk_algorithm_t algo);
 
