@@ -980,6 +980,8 @@ int gnutls_privkey_import_x509(gnutls_privkey_t pkey, gnutls_x509_privkey_t key,
 	pkey->pk_algorithm = gnutls_x509_privkey_get_pk_algorithm(key);
 	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 
+	printf("pkey->pk_algorithm: %d\n", pkey->pk_algorithm);
+
 	if (cc != NULL && cc->copy_backend != NULL) {
 		result = cc->copy_backend(&pkey->pk_ctx, key->pk_ctx, key->params.algo);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
@@ -1684,14 +1686,17 @@ int gnutls_privkey_decrypt_data(gnutls_privkey_t key, unsigned int flags,
 				const gnutls_datum_t *ciphertext,
 				gnutls_datum_t *plaintext)
 {
+	int result;
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
     if (cc != NULL && cc->privkey_decrypt_backend != NULL) {
-        if (cc->privkey_decrypt_backend(&key->pk_ctx, key, ciphertext, plaintext) < 0) {
-            return gnutls_assert_val(-1);
-        }
-
-        return 0;
+		result = cc->privkey_decrypt_backend(key->pk_ctx, key, ciphertext, plaintext);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
     }
 
 	switch (key->type) {
@@ -1742,6 +1747,30 @@ int gnutls_privkey_decrypt_data2(gnutls_privkey_t key, unsigned int flags,
 	 * conditional code should be called after the decryption
 	 * function call, to avoid creating oracle attacks based
 	 * on cache/timing side channels */
+	int result;
+	const gnutls_crypto_pk_st *cc =
+		_gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->privkey_decrypt_backend != NULL) {
+		gnutls_datum_t *plain;
+		plain = gnutls_malloc(plaintext_size);
+		if (plain == NULL) {
+			gnutls_assert();
+			return GNUTLS_E_MEMORY_ERROR;
+		}
+		plain->size = plaintext_size;
+		plain->data = plaintext;
+		result = cc->privkey_decrypt_backend(key->pk_ctx, key,
+						     ciphertext, plain);
+		/* we copy the plaintext to the caller's buffer */
+		memcpy(plaintext, plain->data, plain->size);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
 
 	/* backwards compatibility */
 	if (key->type == GNUTLS_PRIVKEY_EXT &&

@@ -580,7 +580,17 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 			gnutls_assert();
 			return result;
 		} else if (result == 0) {
-			return 0;
+			/* now that we know the algorithm, we copy the context to the registered crypto backend to that same algorithm */
+			const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
+			if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
+				result = cc_algo->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
+				if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+					gnutls_assert();
+					return result;
+				} else if (result == 0) {
+					return 0;
+				}
+			}
 		}
     }
 

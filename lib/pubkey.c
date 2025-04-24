@@ -212,7 +212,17 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 			gnutls_assert();
 			return result;
 		} else if (result == 0) {
-			return 0;
+			/* now that we know the algorithm, we copy the context to the registered crypto backend to that same algorithm */
+			const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
+			if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
+				result = cc_algo->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
+				if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+					gnutls_assert();
+					return result;
+				} else if (result == 0) {
+					return 0;
+				}
+			}
 		}
     }
 
@@ -2416,15 +2426,18 @@ int gnutls_pubkey_encrypt_data(gnutls_pubkey_t key, unsigned int flags,
 			       const gnutls_datum_t *plaintext,
 			       gnutls_datum_t *ciphertext)
 {
+	int result;
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
     if (cc != NULL && cc->pubkey_encrypt_backend != NULL) {
-        if (cc->pubkey_encrypt_backend(&key->pk_ctx, key, plaintext, ciphertext) < 0) {
-            return gnutls_assert_val(-1);
-        }
-
-        return 0;
-    }
+		result = cc->pubkey_encrypt_backend(key->pk_ctx, key, plaintext, ciphertext);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
 
 	if (key == NULL) {
 		gnutls_assert();
