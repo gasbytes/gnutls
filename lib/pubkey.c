@@ -196,7 +196,18 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
     if (cc != NULL && cc->import_pubkey_x509_backend != NULL) {
-		result = cc->import_pubkey_x509_backend(&key->pk_ctx, key, &crt->der, flags);
+		gnutls_pk_algorithm_t *algo;
+
+		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
+		if (algo == NULL) {
+			gnutls_assert();
+			return GNUTLS_E_MEMORY_ERROR;
+		}
+
+		result = cc->import_pubkey_x509_backend(&key->pk_ctx, &algo, &crt->der, flags);
+		key->pk_algorithm = *algo;
+		key->params.algo = *algo;
+
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;

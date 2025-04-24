@@ -1208,7 +1208,7 @@ int gnutls_privkey_sign_data(gnutls_privkey_t signer,
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(signer->pk_algorithm);
 
     if (cc != NULL && cc->sign_backend != NULL) {
-        result = cc->sign_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, data, signature);
+        result = cc->sign_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, data, signature, flags, GNUTLS_E_NO_SIGN_ALGORITHM_SET);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;
@@ -1273,7 +1273,7 @@ int gnutls_privkey_sign_data2(gnutls_privkey_t signer,
     if (cc != NULL && cc->sign_backend != NULL) {
 		se = _gnutls_sign_to_entry(algo);
 		gnutls_digest_algorithm_t hash = se->hash;
-        result = cc->sign_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, data, signature);
+        result = cc->sign_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, data, signature, flags, algo);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;
@@ -1347,15 +1347,13 @@ int gnutls_privkey_sign_hash2(gnutls_privkey_t signer,
 	if (cc != NULL && cc->sign_hash_backend != NULL) {
 		se = _gnutls_sign_to_entry(algo);
 		gnutls_digest_algorithm_t hash = se->hash;
-		result = cc->sign_hash_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, hash_data, signature);
+		result = cc->sign_hash_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, hash_data, signature, flags, algo);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;
 		} else if (result == 0) {
 			return 0;
 		}
-
-		return 0;
 	}
 
 	if (flags & GNUTLS_PRIVKEY_SIGN_FLAG_TLS1_RSA) {
@@ -1482,15 +1480,18 @@ int gnutls_privkey_sign_hash(gnutls_privkey_t signer,
 	int ret;
 	gnutls_x509_spki_st params;
 	const gnutls_sign_entry_st *se;
+	int result;
 
 	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(signer->pk_algorithm);
 
 	if (cc != NULL && cc->sign_hash_backend != NULL) {
-		if (cc->sign_hash_backend(signer->pk_ctx, signer, hash_algo, hash_data, signature) < 0) {
-			return gnutls_assert_val(-1);
+		result = cc->sign_hash_backend(signer->pk_ctx, signer, hash_algo, hash_data, signature, flags, GNUTLS_E_NO_SIGN_ALGORITHM_SET);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
 		}
-
-		return 0;
 	}
 
 	ret = _gnutls_privkey_get_spki_params(signer, &params);

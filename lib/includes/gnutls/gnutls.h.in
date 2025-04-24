@@ -3604,6 +3604,7 @@ gnutls_transport_is_ktls_enabled(gnutls_session_t session);
 #define GNUTLS_E_APPLICATION_ERROR_MAX -65000
 #define GNUTLS_E_APPLICATION_ERROR_MIN -65500
 #define GNUTLS_E_ALGO_NOT_SUPPORTED -65501
+#define GNUTLS_E_NO_SIGN_ALGORITHM_SET -65502
 
 #ifdef __cplusplus
 }

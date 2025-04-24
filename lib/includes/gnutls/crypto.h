@@ -266,9 +266,9 @@ typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
                                           unsigned int bits);
 
 typedef int (*gnutls_pk_export_pubkey_func)(void **pub_key_ctx, void *priv_key_ctx, const void* pubkey);
-typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, const void *privkey,
+typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
         const gnutls_datum_t * data, gnutls_x509_crt_fmt_t format);
-typedef int (*gnutls_pk_import_pubkey_x509_func)(void **ctx, const void *pubkey,
+typedef int (*gnutls_pk_import_pubkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
         gnutls_datum_t * data, unsigned int flags);
 typedef int (*gnutls_pk_pubkey_encrypt_func)(void *ctx, gnutls_pubkey_t key, const gnutls_datum_t * plaintext, gnutls_datum_t * ciphertext);
 typedef int (*gnutls_pk_privkey_decrypt_func)(void *ctx, gnutls_privkey_t key, const gnutls_datum_t * ciphertext, gnutls_datum_t * plaintext);
@@ -278,11 +278,15 @@ typedef int (*gnutls_pk_sign_func)(void *ctx,
                                    const void *privkey,
                                    gnutls_digest_algorithm_t hash,
                                    const void *data,
-                                   const void *signature);
+                                   const void *signature,
+                                   unsigned int flags,
+                                   gnutls_sign_algorithm_t algo);
 typedef int (*gnutls_pk_sign_hash_func)(void *ctx, const void *privkey,
                                       gnutls_digest_algorithm_t hash_algo,
                                       const gnutls_datum_t *hash_data,
-                                      gnutls_datum_t *signature);
+                                      gnutls_datum_t *signature,
+                                      unsigned int flags,
+                                      gnutls_sign_algorithm_t algo);
 typedef int (*gnutls_pk_verify_hash_func)(void *ctx, const void *pubkey,
                                         gnutls_sign_algorithm_t algo,
                                         const gnutls_datum_t *hash,
