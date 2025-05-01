@@ -106,6 +106,20 @@ typedef struct gnutls_crypto_prf {
 		   char *out);
 } gnutls_crypto_prf_st;
 
+typedef struct {
+	int (*init)(gnutls_mac_algorithm_t mac, const uint8_t *psk,
+		    size_t psk_size, void *out, size_t output_size);
+	int (*update)(gnutls_mac_algorithm_t mac, const uint8_t *key,
+		      size_t key_size, const uint8_t *salt, size_t salt_size,
+		      uint8_t *secret);
+	int (*derive)(gnutls_mac_algorithm_t mac, const char *label,
+		      unsigned label_size, const uint8_t *tbh, size_t tbh_size,
+		      const uint8_t* secret, void *out, size_t output_size);
+	int (*expand)(gnutls_mac_algorithm_t mac, const char *label,
+		      unsigned label_size, const uint8_t *msg, size_t msg_size,
+		      const uint8_t* secret, unsigned out_size, void *out);
+} gnutls_crypto_tls13_hkdf_st;
+
 typedef void *bigint_t;
 
 /**
@@ -472,6 +486,9 @@ int gnutls_crypto_single_pk_register(gnutls_pk_algorithm_t algorithm,
 
 int gnutls_crypto_rnd_register(int priority, const gnutls_crypto_rnd_st *s);
 int gnutls_crypto_prf_register(int priority, const gnutls_crypto_prf_st *s);
+int gnutls_crypto_kdf_register(int priority, const gnutls_crypto_kdf_st *s);
+int gnutls_crypto_tls13_hkdf_register(int priority,
+				      const gnutls_crypto_tls13_hkdf_st *s);
 int gnutls_crypto_pk_register(int priority, const gnutls_crypto_pk_st *s);
 int gnutls_crypto_bigint_register(int priority,
 				  const gnutls_crypto_bigint_st *s);

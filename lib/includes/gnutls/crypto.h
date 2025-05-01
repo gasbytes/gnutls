@@ -344,6 +344,11 @@ typedef int (*gnutls_prf_raw_func)(gnutls_mac_algorithm_t mac,
                                    size_t seed_size, const unsigned char *seed,
                                    size_t outsize, char *out);
 
+int gnutls_prf_gen(gnutls_mac_algorithm_t mac, size_t master_size,
+		   const void *master, size_t label_size, const char *label,
+		   size_t seed_size, const unsigned char *seed, size_t outsize,
+		   char *out);
+
 #ifdef __cplusplus
 }
 #endif

@@ -361,6 +361,69 @@ int gnutls_crypto_prf_register(int priority, const gnutls_crypto_prf_st *s)
 	return GNUTLS_E_CRYPTO_ALREADY_REGISTERED;
 }
 
+int crypto_kdf_prio = INT_MAX;
+extern gnutls_crypto_kdf_st _gnutls_kdf_ops;
+
+/*-
+ * gnutls_crypto_kdf_register:
+ * @priority: is the priority of the KDF
+ * @s: is a structure holding new KDF's data
+ *
+ * This function will register a KDF to be used by
+ * gnutls.  Any KDF registered will override the included
+ * KDF and by convention kernel implemented KDF have
+ * priority of 90 and CPU-assisted of 80. The KDF with the lowest priority will be
+ * used by gnutls.
+ *
+ * This function should be called before gnutls_global_init().
+ *
+ * Returns: %GNUTLS_E_SUCCESS on success, otherwise a negative error code.
+ *
+ * Since: 2.6.0
+ -*/
+int gnutls_crypto_kdf_register(int priority, const gnutls_crypto_kdf_st *s)
+{
+	if (crypto_kdf_prio >= priority) {
+		memcpy(&_gnutls_kdf_ops, s, sizeof(*s));
+		crypto_kdf_prio = priority;
+		return 0;
+	}
+
+	return GNUTLS_E_CRYPTO_ALREADY_REGISTERED;
+}
+
+int crypto_tls13_hkdf_prio = INT_MAX;
+extern gnutls_crypto_tls13_hkdf_st _gnutls_tls13_hkdf_ops;
+
+/*-
+ * gnutls_crypto_TLS 1.3 hkdf_register:
+ * @priority: is the priority of the HKDF
+ * @s: is a structure holding new HKDF's data
+ *
+ * This function will register a HKDF to be used by
+ * gnutls.  Any HKDF registered will override the included
+ * HKDF and by convention kernel implemented HKDF have
+ * priority of 90 and CPU-assisted of 80. The HKDF with the lowest priority will be
+ * used by gnutls.
+ *
+ * This function should be called before gnutls_global_init().
+ *
+ * Returns: %GNUTLS_E_SUCCESS on success, otherwise a negative error code.
+ *
+ * Since: 2.6.0
+ -*/
+int gnutls_crypto_tls13_hkdf_register(int priority,
+                                      const gnutls_crypto_tls13_hkdf_st *s)
+{
+	if (crypto_tls13_hkdf_prio >= priority) {
+		memcpy(&_gnutls_tls13_hkdf_ops, s, sizeof(*s));
+		crypto_tls13_hkdf_prio = priority;
+		return 0;
+	}
+
+	return GNUTLS_E_CRYPTO_ALREADY_REGISTERED;
+}
+
 /*-
  * gnutls_crypto_single_mac_register:
  * @algorithm: is the gnutls algorithm identifier
@@ -531,6 +594,23 @@ int gnutls_load_crypto_provider(const char *provider_path)
         prf_ops_func func = (prf_ops_func)dlsym(handle, "gnutls_get_prf_ops");
         if (func != NULL) {
             gnutls_crypto_prf_register(80, func());
+        }
+    }
+
+    {
+        typedef gnutls_crypto_kdf_st*(*kdf_ops_func)(void);
+        kdf_ops_func func = (kdf_ops_func)dlsym(handle, "gnutls_get_kdf_ops");
+        if (func != NULL) {
+            gnutls_crypto_kdf_register(80, func());
+        }
+    }
+
+    {
+        typedef gnutls_crypto_tls13_hkdf_st*(*tls13_hkdf_ops_func)(void);
+        tls13_hkdf_ops_func func = (tls13_hkdf_ops_func)dlsym(handle,
+            "gnutls_get_tls13_hkdf_ops");
+        if (func != NULL) {
+            gnutls_crypto_tls13_hkdf_register(80, func());
         }
     }
 

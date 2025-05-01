@@ -58,7 +58,7 @@ static int compute_psk_from_ticket(const tls13_ticket_st *ticket,
 	}
 	key->size = ticket->prf->output_size;
 
-	ret = _tls13_expand_secret2(ticket->prf, RESUMPTION_LABEL,
+	ret = _tls13_expand_secret2(ticket->prf->id, RESUMPTION_LABEL,
 				    sizeof(RESUMPTION_LABEL) - 1, ticket->nonce,
 				    ticket->nonce_size,
 				    ticket->resumption_master_secret, key->size,
@@ -111,13 +111,14 @@ static int compute_binder_key(const mac_entry_st *prf, const uint8_t *key,
 	uint8_t tmp_key[MAX_HASH_SIZE];
 
 	/* Compute HKDF-Extract(0, psk) */
-	ret = _tls13_init_secret2(prf, key, keylen, tmp_key);
+	ret = _tls13_init_secret2(prf->id, key, keylen, tmp_key,
+				  prf->output_size);
 	if (ret < 0)
 		return ret;
 
 	/* Compute Derive-Secret(secret, label, transcript_hash) */
-	ret = _tls13_derive_secret2(prf, label, label_len, NULL, 0, tmp_key,
-				    out);
+	ret = _tls13_derive_secret2(prf->id, label, label_len, NULL, 0, tmp_key,
+				    out, prf->output_size);
 	if (ret < 0)
 		return ret;
 
@@ -237,11 +238,11 @@ static int generate_early_secrets(gnutls_session_t session,
 	int ret;
 
 	ret = _tls13_derive_secret2(
-		prf, EARLY_TRAFFIC_LABEL, sizeof(EARLY_TRAFFIC_LABEL) - 1,
+		prf->id, EARLY_TRAFFIC_LABEL, sizeof(EARLY_TRAFFIC_LABEL) - 1,
 		session->internals.handshake_hash_buffer.data,
 		session->internals.handshake_hash_buffer_client_hello_len,
 		session->key.proto.tls13.temp_secret,
-		session->key.proto.tls13.e_ckey);
+		session->key.proto.tls13.e_ckey, prf->output_size);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
@@ -252,12 +253,12 @@ static int generate_early_secrets(gnutls_session_t session,
 		return gnutls_assert_val(ret);
 
 	ret = _tls13_derive_secret2(
-		prf, EARLY_EXPORTER_MASTER_LABEL,
+		prf->id, EARLY_EXPORTER_MASTER_LABEL,
 		sizeof(EARLY_EXPORTER_MASTER_LABEL) - 1,
 		session->internals.handshake_hash_buffer.data,
 		session->internals.handshake_hash_buffer_client_hello_len,
 		session->key.proto.tls13.temp_secret,
-		session->key.proto.tls13.ap_expkey);
+		session->key.proto.tls13.ap_expkey, prf->output_size);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
@@ -286,8 +287,9 @@ int _gnutls_generate_early_secrets_for_psk(gnutls_session_t session)
 	if (unlikely(psk_size == 0))
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 
-	ret = _tls13_init_secret2(prf, psk, psk_size,
-				  session->key.proto.tls13.temp_secret);
+	ret = _tls13_init_secret2(prf->id, psk, psk_size,
+				  session->key.proto.tls13.temp_secret,
+				  prf->output_size);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
@@ -391,7 +393,8 @@ static int derive_ipsk(const mac_entry_st *prf,
 	int ret;
 
 	/* epskx = HKDF-Extract(0, epsk) */
-	ret = _tls13_init_secret2(prf, epsk->data, epsk->size, epskx);
+	ret = _tls13_init_secret2(prf->id, epsk->data, epsk->size, epskx,
+				  prf->output_size);
 	if (ret < 0) {
 		return ret;
 	}
@@ -402,7 +405,7 @@ static int derive_ipsk(const mac_entry_st *prf,
 		return ret;
 	}
 	/* ipskx = HKDF-Expand-Label(epskx, "derived psk", Hash(ImportedIdentity), L) */
-	return _tls13_expand_secret2(prf, DERIVED_PSK_LABEL,
+	return _tls13_expand_secret2(prf->id, DERIVED_PSK_LABEL,
 				     sizeof(DERIVED_PSK_LABEL) - 1,
 				     hashed_identity, prf->output_size, epskx,
 				     prf->output_size, ipsk);

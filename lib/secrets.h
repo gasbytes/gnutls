@@ -29,26 +29,30 @@ int _tls13_init_secret(gnutls_session_t session, const uint8_t *psk,
 		       size_t psk_size);
 int _tls13_update_secret(gnutls_session_t session, const uint8_t *key,
 			 size_t key_size);
+int _tls13_update_secret2(gnutls_mac_algorithm_t mac, const uint8_t *key,
+                         size_t key_size, const uint8_t *salt, size_t salt_size,                         uint8_t *secret);
 
-int _tls13_init_secret2(const mac_entry_st *prf, const uint8_t *psk,
-			size_t psk_size, void *out);
+int _tls13_init_secret2(gnutls_mac_algorithm_t mac, const uint8_t *psk,
+			size_t psk_size, void *out, size_t output_size);
 
 int _tls13_derive_secret(gnutls_session_t session, const char *label,
 			 unsigned label_size, const uint8_t *msg,
 			 size_t msg_size, const uint8_t secret[MAX_HASH_SIZE],
 			 void *out /* of enough length to hold PRF MAC */);
-int _tls13_derive_secret2(const mac_entry_st *prf, const char *label,
+int _tls13_derive_secret2(gnutls_mac_algorithm_t mac, const char *label,
 			  unsigned label_size, const uint8_t *tbh,
 			  size_t tbh_size, const uint8_t secret[MAX_HASH_SIZE],
-			  void *out);
+			  void *out, size_t output_size);
 
 int _tls13_expand_secret(gnutls_session_t session, const char *label,
 			 unsigned label_size, const uint8_t *msg,
 			 size_t msg_size, const uint8_t secret[MAX_HASH_SIZE],
 			 unsigned out_size, void *out);
-int _tls13_expand_secret2(const mac_entry_st *prf, const char *label,
+int _tls13_expand_secret2(gnutls_mac_algorithm_t mac, const char *label,
 			  unsigned label_size, const uint8_t *msg,
 			  size_t msg_size, const uint8_t secret[MAX_HASH_SIZE],
 			  unsigned out_size, void *out);
+
+extern gnutls_crypto_tls13_hkdf_st _gnutls_tls13_hkdf_ops;
 
 #endif /* GNUTLS_LIB_SECRETS_H */
