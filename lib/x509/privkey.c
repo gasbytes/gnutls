@@ -571,7 +571,7 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 			return GNUTLS_E_MEMORY_ERROR;
 		}
 
-		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, data, format);
+		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, data, format, NULL, NULL);
 
 		key->pk_algorithm = *algo;
 		key->params.algo = *algo;
@@ -1276,7 +1276,7 @@ int gnutls_x509_privkey_import_dh_raw(gnutls_x509_privkey_t key,
 				      const gnutls_datum_t *x)
 {
 	int ret;
-
+	
 	if (unlikely(key == NULL || params == NULL || x == NULL)) {
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 	}
@@ -1314,6 +1314,34 @@ int gnutls_x509_privkey_import_dh_raw(gnutls_x509_privkey_t key,
 
 	key->params.algo = GNUTLS_PK_DH;
 	key->params.params_nr = DH_PRIVATE_PARAMS;
+
+	int result;
+	key->pk_algorithm = GNUTLS_PK_DH;
+	const gnutls_crypto_pk_st *cc =
+		_gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
+		gnutls_pk_algorithm_t *algo;
+
+		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
+		if (algo == NULL) {
+			gnutls_assert();
+			return GNUTLS_E_MEMORY_ERROR;
+		}
+
+		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo,
+							 NULL, GNUTLS_X509_FMT_DER, y, x);
+
+		key->pk_algorithm = *algo;
+		key->params.algo = *algo;
+
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
 
 	return 0;
 

@@ -980,8 +980,6 @@ int gnutls_privkey_import_x509(gnutls_privkey_t pkey, gnutls_x509_privkey_t key,
 	pkey->pk_algorithm = gnutls_x509_privkey_get_pk_algorithm(key);
 	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 
-	printf("pkey->pk_algorithm: %d\n", pkey->pk_algorithm);
-
 	if (cc != NULL && cc->copy_backend != NULL) {
 		result = cc->copy_backend(&pkey->pk_ctx, key->pk_ctx, key->params.algo);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {

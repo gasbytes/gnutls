@@ -204,7 +204,8 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 			return GNUTLS_E_MEMORY_ERROR;
 		}
 
-		result = cc->import_pubkey_x509_backend(&key->pk_ctx, &algo, &crt->der, flags);
+		result = cc->import_pubkey_x509_backend(&key->pk_ctx, &algo,
+							&crt->der, flags, NULL, NULL);
 		key->pk_algorithm = *algo;
 		key->params.algo = *algo;
 
@@ -1200,6 +1201,19 @@ int gnutls_pubkey_export_dh_raw(gnutls_pubkey_t key, gnutls_dh_params_t params,
 				gnutls_datum_t *y, unsigned flags)
 {
 	int ret;
+	int result;
+
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_DH);
+	if (cc != NULL && cc->pubkey_export_dh_raw_backend != NULL) {
+		result = cc->pubkey_export_dh_raw_backend(key->pk_ctx, y);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
+
 	mpi_dprint_func dprint = _gnutls_mpi_dprint_lz;
 
 	if (flags & GNUTLS_EXPORT_FLAG_NO_LZ) {
@@ -1224,18 +1238,6 @@ int gnutls_pubkey_export_dh_raw(gnutls_pubkey_t key, gnutls_dh_params_t params,
 		params->q_bits = key->params.qbits;
 	}
 
-	int result;
-
-	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_DH);
-	if (cc != NULL && cc->pubkey_export_dh_raw_backend != NULL) {
-		result = cc->pubkey_export_dh_raw_backend(key->pk_ctx, y);
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			return 0;
-		}
-	}
 
 
 	/* Y */
@@ -2151,6 +2153,36 @@ int gnutls_pubkey_import_dh_raw(gnutls_pubkey_t key,
 {
 	int ret;
 
+	int result;
+
+	key->params.algo = GNUTLS_PK_DH;
+	key->bits = pubkey_to_bits(&key->params);
+
+	key->pk_algorithm = GNUTLS_PK_DH;
+	const gnutls_crypto_pk_st *cc =
+		_gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->import_pubkey_x509_backend != NULL) {
+		gnutls_pk_algorithm_t *algo;
+
+		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
+		if (algo == NULL) {
+			gnutls_assert();
+			return GNUTLS_E_MEMORY_ERROR;
+		}
+
+		result = cc->import_pubkey_x509_backend(&key->pk_ctx, &algo, NULL, GNUTLS_X509_FMT_DER, y, NULL);
+		key->pk_algorithm = *algo;
+		key->params.algo = *algo;
+
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
+
 	if (unlikely(key == NULL || params == NULL || y == NULL)) {
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 	}
@@ -2173,8 +2205,6 @@ int gnutls_pubkey_import_dh_raw(gnutls_pubkey_t key,
 		goto cleanup;
 	}
 
-	key->params.algo = GNUTLS_PK_DH;
-	key->bits = pubkey_to_bits(&key->params);
 
 	return 0;
 
