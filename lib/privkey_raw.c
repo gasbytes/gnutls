@@ -18,6 +18,7 @@
  */
 
 #include "gnutls_int.h"
+#include "crypto-backend.h"
 #include <gnutls/pkcs11.h>
 #include <stdio.h>
 #include <string.h>
@@ -222,6 +223,19 @@ int gnutls_privkey_export_dh_raw(gnutls_privkey_t key,
 		params->q_bits = pk_params.qbits;
 
 		gnutls_pk_params_release(&pk_params);
+	}
+
+	int result;
+
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_DH);
+	if (cc != NULL && cc->privkey_export_dh_raw_backend != NULL) {
+		result = cc->privkey_export_dh_raw_backend(key->pk_ctx, y, x);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
 	}
 
 	return gnutls_privkey_export_dsa_raw2(key, NULL, NULL, NULL, y, x,

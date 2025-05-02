@@ -980,7 +980,7 @@ int gnutls_privkey_import_x509(gnutls_privkey_t pkey, gnutls_x509_privkey_t key,
 	pkey->pk_algorithm = gnutls_x509_privkey_get_pk_algorithm(key);
 	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 
-	fprintf(stderr, "pkey->pk_algorithm: %d\n", pkey->pk_algorithm);
+	printf("pkey->pk_algorithm: %d\n", pkey->pk_algorithm);
 
 	if (cc != NULL && cc->copy_backend != NULL) {
 		result = cc->copy_backend(&pkey->pk_ctx, key->pk_ctx, key->params.algo);
@@ -1142,21 +1142,6 @@ int gnutls_privkey_generate2(gnutls_privkey_t pkey, gnutls_pk_algorithm_t algo,
 			     unsigned data_size)
 {
 	int ret;
-	int result;
-
-    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(algo);
-
-    if (cc != NULL && cc->generate_backend != NULL) {
-        pkey->pk_algorithm = algo;
-
-        result = cc->generate_backend(&pkey->pk_ctx, pkey, algo, bits);
-        if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-                gnutls_assert();
-                return result;
-        } else if (result == 0) {
-			return 0;
-		}
-    }
 
 	ret = gnutls_x509_privkey_init(&pkey->key.x509);
 	if (ret < 0)
@@ -1173,6 +1158,18 @@ int gnutls_privkey_generate2(gnutls_privkey_t pkey, gnutls_pk_algorithm_t algo,
 	pkey->type = GNUTLS_PRIVKEY_X509;
 	pkey->pk_algorithm = algo;
 	pkey->flags = flags | GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE;
+
+	const gnutls_crypto_pk_st *cc_algo =
+		_gnutls_get_crypto_pk(algo);
+	if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
+		int result = cc_algo->copy_backend(&pkey->pk_ctx, pkey->key.x509->pk_ctx, algo);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
 
 	return 0;
 }

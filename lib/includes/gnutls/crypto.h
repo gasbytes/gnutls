@@ -263,7 +263,7 @@ int gnutls_crypto_register_mac(
 
 typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
                                           gnutls_pk_algorithm_t algo,
-                                          unsigned int bits);
+                                          unsigned int bits, const void* p, const void* g, const void* q);
 
 typedef int (*gnutls_pk_export_pubkey_func)(void **pub_key_ctx, void *priv_key_ctx, const void* pubkey);
 typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
@@ -297,6 +297,8 @@ typedef int (*gnutls_pk_verify_func)(void *ctx,
                                      const void *data,
                                      const void *signature);
 typedef int (*gnutls_pk_derive_shared_secret_func)(void* pubkey_ctx, void* privkey_ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
+typedef int (*gnutls_pk_privkey_export_dh_raw_func)(void *ctx, const void *y, const void *x);
+typedef int (*gnutls_pk_pubkey_export_dh_raw_func)(void *ctx, const void*y);
 typedef void (*gnutls_pk_deinit_func)(void *ctx);
 typedef int (*gnutls_pk_copy_func)(void **dst, void *src, gnutls_pk_algorithm_t algo);
 

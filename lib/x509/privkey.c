@@ -2032,20 +2032,7 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 	gnutls_x509_spki_t spki = NULL;
 	gnutls_dh_params_t dh_params = NULL;
 	int result;
-
-	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(algo);
-
-	if (cc != NULL && cc->generate_backend != NULL) {
-		key->pk_algorithm = algo;
-
-		result = cc->generate_backend(&key->pk_ctx, key, algo, bits);
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			return 0;
-		}
-	}
+	unsigned int bits_copy = bits;
 
 	if (key == NULL) {
 		gnutls_assert();
@@ -2179,10 +2166,64 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 		}
 	}
 
-	ret = _gnutls_pk_generate_keys(algo, bits, &key->params, 0);
-	if (ret < 0) {
-		gnutls_assert();
-		goto cleanup;
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(algo);
+
+	if (cc != NULL && cc->generate_backend != NULL) {
+		key->pk_algorithm = algo;
+
+		gnutls_datum_t p, g, q;
+
+		if (algo == GNUTLS_PK_DH && bits == 0) {
+			gnutls_dh_params_t dh_params = NULL;
+
+			for (int i = 0; i < data_size; i++) {
+				if (data[i].type == GNUTLS_KEYGEN_DH) {
+					dh_params = (void *)data[i].data;
+				}
+			}
+
+			if (dh_params == NULL) {
+				gnutls_assert();
+				return GNUTLS_E_INVALID_REQUEST;
+			}
+
+			ret = _gnutls_mpi_dprint(dh_params->params[0], &p);
+			if (ret < 0) {
+				gnutls_assert();
+				return ret;
+			}
+
+			ret = _gnutls_mpi_dprint(dh_params->params[1], &g);
+			if (ret < 0) {
+				gnutls_assert();
+				return ret;
+			}
+
+			if (dh_params->params[2] != NULL) {
+				ret = _gnutls_mpi_dprint(dh_params->params[2],
+							 &q);
+				if (ret < 0) {
+					gnutls_assert();
+					return ret;
+				}
+			}
+		}
+
+		result = cc->generate_backend(&key->pk_ctx, key, algo, bits_copy, &p,
+					      &g, &q);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		} else {
+			ret = _gnutls_pk_generate_keys(algo, bits, &key->params,
+						       0);
+			if (ret < 0) {
+				gnutls_assert();
+				goto cleanup;
+			}
+		}
 	}
 
 	ret = _gnutls_pk_verify_priv_params(algo, &key->params);

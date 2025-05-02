@@ -309,6 +309,12 @@ int gnutls_pubkey_import_privkey(gnutls_pubkey_t key, gnutls_privkey_t pkey,
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 	int result;
 
+	gnutls_pk_params_release(&key->params);
+	gnutls_pk_params_init(&key->params);
+
+	key->key_usage = usage;
+	key->params.algo = pkey->pk_algorithm;
+
     if (cc != NULL && cc->export_pubkey_backend != NULL) {
         key->pk_algorithm = pkey->pk_algorithm;
         result = cc->export_pubkey_backend(&key->pk_ctx, pkey->pk_ctx, key);
@@ -319,12 +325,6 @@ int gnutls_pubkey_import_privkey(gnutls_pubkey_t key, gnutls_privkey_t pkey,
 			return 0;
 		}
     }
-
-	gnutls_pk_params_release(&key->params);
-	gnutls_pk_params_init(&key->params);
-
-	key->key_usage = usage;
-	key->params.algo = gnutls_privkey_get_pk_algorithm(pkey, &key->bits);
 
 	return _gnutls_privkey_get_public_mpis(pkey, &key->params);
 }
@@ -1223,6 +1223,20 @@ int gnutls_pubkey_export_dh_raw(gnutls_pubkey_t key, gnutls_dh_params_t params,
 		}
 		params->q_bits = key->params.qbits;
 	}
+
+	int result;
+
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_DH);
+	if (cc != NULL && cc->pubkey_export_dh_raw_backend != NULL) {
+		result = cc->pubkey_export_dh_raw_backend(key->pk_ctx, y);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		}
+	}
+
 
 	/* Y */
 	if (y) {
