@@ -2202,33 +2202,33 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 		gnutls_datum_t p, g, q;
 
 		if (algo == GNUTLS_PK_DH && bits == 0) {
-			gnutls_dh_params_t dh_params = NULL;
+			gnutls_dh_params_t dh_params_copy = NULL;
 
-			for (int i = 0; i < data_size; i++) {
+			for (i = 0; i < (unsigned int)data_size; i++) {
 				if (data[i].type == GNUTLS_KEYGEN_DH) {
-					dh_params = (void *)data[i].data;
+					dh_params_copy = (void *)data[i].data;
 				}
 			}
 
-			if (dh_params == NULL) {
+			if (dh_params_copy == NULL) {
 				gnutls_assert();
 				return GNUTLS_E_INVALID_REQUEST;
 			}
 
-			ret = _gnutls_mpi_dprint(dh_params->params[0], &p);
+			ret = _gnutls_mpi_dprint(dh_params_copy->params[0], &p);
 			if (ret < 0) {
 				gnutls_assert();
 				return ret;
 			}
 
-			ret = _gnutls_mpi_dprint(dh_params->params[1], &g);
+			ret = _gnutls_mpi_dprint(dh_params_copy->params[1], &g);
 			if (ret < 0) {
 				gnutls_assert();
 				return ret;
 			}
 
-			if (dh_params->params[2] != NULL) {
-				ret = _gnutls_mpi_dprint(dh_params->params[2],
+			if (dh_params_copy->params[2] != NULL) {
+				ret = _gnutls_mpi_dprint(dh_params_copy->params[2],
 							 &q);
 				if (ret < 0) {
 					gnutls_assert();
@@ -2244,14 +2244,13 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		} else {
-			ret = _gnutls_pk_generate_keys(algo, bits, &key->params,
-						       0);
-			if (ret < 0) {
-				gnutls_assert();
-				goto cleanup;
-			}
 		}
+	}
+
+	ret = _gnutls_pk_generate_keys(algo, bits, &key->params, 0);
+	if (ret < 0) {
+		gnutls_assert();
+		goto cleanup;
 	}
 
 	ret = _gnutls_pk_verify_priv_params(algo, &key->params);

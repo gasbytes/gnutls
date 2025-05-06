@@ -2378,13 +2378,13 @@ int gnutls_pubkey_verify_hash2(gnutls_pubkey_t key,
 
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
-    if (cc != NULL && cc->verify_hash_backend!= NULL) {
+    if (cc != NULL && cc->verify_hash_backend != NULL) {
 		result = cc->verify_hash_backend(key->pk_ctx, key, algo, hash, signature);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;
 		} else if (result == 0) {
-			return 0;
+			return 1;
 		}
     }
 
