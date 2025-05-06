@@ -569,15 +569,15 @@ int gnutls_load_crypto_provider(const char *provider_path)
     void *handle;
 
     if (provider_path == NULL) {
-        fprintf(stderr, "Error: Provider path must be specified\n");
+	_gnutls_debug_log("Error: Provider path must be specified\n");
         return -1;
     }
 
-    fprintf(stderr, "Loading crypto provider from: %s\n", provider_path);
+    _gnutls_debug_log("Loading crypto provider from: %s\n", provider_path);
 
     handle = dlopen(provider_path, RTLD_NOW);
     if (handle == NULL) {
-        fprintf(stderr, "Failed to load provider: %s\n", dlerror());
+        _gnutls_debug_log("Failed to load provider: %s\n", dlerror());
         return -1;
     }
 
@@ -614,7 +614,8 @@ int gnutls_load_crypto_provider(const char *provider_path)
         }
     }
 
-    fprintf(stderr, "Successfully loaded crypto provider\n");
+    _gnutls_debug_log("Successfully loaded crypto provider\n");
+
     return 0;
 }
 
