@@ -516,6 +516,7 @@ static int check_binary_integrity(void)
 
 int _gnutls_fips_perform_self_checks1(void)
 {
+#if !defined(GNUTLS_WOLFSSL)
 	int ret;
 
 	/* Tests the FIPS algorithms used by nettle internally.
@@ -528,12 +529,14 @@ int _gnutls_fips_perform_self_checks1(void)
 	if (ret < 0) {
 		return gnutls_assert_val(GNUTLS_E_SELF_TEST_ERROR);
 	}
+#endif
 
 	return 0;
 }
 
 int _gnutls_fips_perform_self_checks2(void)
 {
+#if !defined(GNUTLS_WOLFSSL)
 	int ret;
 
 	/* Tests the FIPS algorithms */
@@ -683,6 +686,7 @@ int _gnutls_fips_perform_self_checks2(void)
 			return gnutls_assert_val(GNUTLS_E_SELF_TEST_ERROR);
 		}
 	}
+#endif
 
 	return 0;
 }
