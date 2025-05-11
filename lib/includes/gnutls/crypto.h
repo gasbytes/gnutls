@@ -261,10 +261,14 @@ int gnutls_crypto_register_mac(
 	gnutls_mac_deinit_func deinit,
 	gnutls_mac_fast_func hash_fast) _GNUTLS_GCC_ATTR_DEPRECATED;
 
+typedef int (*gnutls_pk_get_bits_func)(void **ctx, unsigned int *bits);
 typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
                                           gnutls_pk_algorithm_t algo,
                                           unsigned int bits, const void* p, const void* g, const void* q);
 
+typedef int (*gnutls_pk_import_pubkey_func)(void **ctx,
+					    gnutls_pk_algorithm_t **algo,
+					    const gnutls_datum_t * data);
 typedef int (*gnutls_pk_export_pubkey_func)(void **pub_key_ctx, void *priv_key_ctx, const void* pubkey);
 typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
         const gnutls_datum_t * data, gnutls_x509_crt_fmt_t format, const void *y, const void *x);

@@ -111,9 +111,9 @@ static int _tls13_derive_exporter(const mac_entry_st *prf,
 	unsigned digest_size = prf->output_size;
 	int ret;
 
-	ret = _tls13_derive_secret2(prf->id, label, label_size, NULL, 0,
-				    session->key.proto.tls13.ap_expkey, secret,
-				    prf->output_size);
+	ret = _gnutls_tls13_hkdf_ops.derive(prf->id, label, label_size, NULL, 0,
+					    session->key.proto.tls13.ap_expkey,
+					    secret, prf->output_size);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
@@ -122,9 +122,9 @@ static int _tls13_derive_exporter(const mac_entry_st *prf,
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
-	return _tls13_expand_secret2(prf->id, EXPORTER_LABEL,
-				     sizeof(EXPORTER_LABEL) - 1, digest,
-				     digest_size, secret, outsize, out);
+	return _gnutls_tls13_hkdf_ops.expand(prf->id, EXPORTER_LABEL,
+					     sizeof(EXPORTER_LABEL) - 1, digest,
+					     digest_size, secret, outsize, out);
 }
 
 /**

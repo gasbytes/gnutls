@@ -36,8 +36,8 @@ int _gnutls13_compute_finished(const mac_entry_st *prf, const uint8_t *base_key,
 	uint8_t fkey[MAX_HASH_SIZE];
 	uint8_t ts_hash[MAX_HASH_SIZE];
 
-	ret = _tls13_expand_secret2(prf->id, "finished", 8, NULL, 0, base_key,
-				    prf->output_size, fkey);
+	ret = _gnutls_tls13_hkdf_ops.expand(prf->id, "finished", 8, NULL, 0,
+					    base_key, prf->output_size, fkey);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 

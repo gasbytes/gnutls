@@ -330,6 +330,21 @@ int gnutls_pubkey_import_privkey(gnutls_pubkey_t key, gnutls_privkey_t pkey,
 	return _gnutls_privkey_get_public_mpis(pkey, &key->params);
 }
 
+static unsigned int _gnutls_pubkey_get_bits(gnutls_pubkey_t key)
+{
+	unsigned int bits = 0;
+	const gnutls_crypto_pk_st *cc; 
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->get_bits != NULL) {
+		cc->get_bits(key->pk_ctx, &bits);
+	}
+	else {
+ 		bits = pubkey_to_bits(&key->params);
+	}
+
+	return bits;
+}
+
 /**
  * gnutls_pubkey_get_preferred_hash_algorithm:
  * @key: Holds the certificate
@@ -407,7 +422,7 @@ int gnutls_pubkey_get_preferred_hash_algorithm(gnutls_pubkey_t key,
 				*hash = key->params.spki.rsa_pss_dig;
 			} else {
 				*hash = _gnutls_pk_bits_to_sha_hash(
-					pubkey_to_bits(&key->params));
+						_gnutls_pubkey_get_bits(key));
 			}
 		}
 		ret = 0;
@@ -415,7 +430,7 @@ int gnutls_pubkey_get_preferred_hash_algorithm(gnutls_pubkey_t key,
 	case GNUTLS_PK_RSA:
 		if (hash)
 			*hash = _gnutls_pk_bits_to_sha_hash(
-				pubkey_to_bits(&key->params));
+					_gnutls_pubkey_get_bits(key));
 		ret = 0;
 		break;
 	case GNUTLS_PK_MLDSA44:
@@ -855,10 +870,50 @@ int gnutls_pubkey_export(gnutls_pubkey_t key, gnutls_x509_crt_fmt_t format,
 {
 	int result;
 	asn1_node spk = NULL;
+	const gnutls_crypto_pk_st *cc;
 
 	if (key == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
+	}
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->export_pubkey_backend != NULL) {
+		void* pub_ctx;
+		gnutls_datum_t datum = {
+			.data = NULL,
+			.size = 0
+		};
+
+		result = cc->export_pubkey_backend(&pub_ctx, key->pk_ctx,
+						   &datum);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			if (format == GNUTLS_X509_FMT_PEM) {
+				result = gnutls_pem_base64_encode("PUBLIC_KEY",
+					&datum, output_data, output_data_size);
+				if (result < 0) {
+					gnutls_assert();
+					return result;
+				}
+			}
+			else {
+				if (*output_data_size < datum.size) {
+					*output_data_size = datum.size;
+					gnutls_free(datum.data);
+					return GNUTLS_E_SHORT_MEMORY_BUFFER;
+				}
+				*output_data_size = datum.size;
+				if (output_data != NULL) {
+					memcpy(output_data, datum.data,
+					       datum.size);
+				}
+			}
+			gnutls_free(datum.data);
+			return 0;
+		}
 	}
 
 	if ((result = asn1_create_element(_gnutls_get_pkix(),
@@ -1514,6 +1569,39 @@ int gnutls_pubkey_import(gnutls_pubkey_t key, const gnutls_datum_t *data,
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
 	}
+
+    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc != NULL && cc->import_pubkey_backend != NULL) {
+                gnutls_pk_algorithm_t *algo;
+
+                algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
+                if (algo == NULL) {
+                        gnutls_assert();
+                        return GNUTLS_E_MEMORY_ERROR;
+                }
+
+                result = cc->import_pubkey_backend(&key->pk_ctx, &algo, data);
+                key->pk_algorithm = *algo;
+                key->params.algo = *algo;
+
+                if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+                        gnutls_assert();
+                        return result;
+                } else if (result == 0) {
+                        /* now that we know the algorithm, we copy the context to the registered crypto backend to that same algorithm */
+                        const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
+                        if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
+                                result = cc_algo->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
+                                if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+                                        gnutls_assert();
+                                        return result;
+                                } else if (result == 0) {
+                                        return 0;
+                                }
+                        }
+                }
+    }
 
 	_data.data = data->data;
 	_data.size = data->size;

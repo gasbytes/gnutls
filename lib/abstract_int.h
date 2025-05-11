@@ -30,6 +30,7 @@ typedef int (*gnutls_privkey_pk_params_func)(gnutls_privkey_t key,
 					     gnutls_pk_params_st *params);
 
 struct gnutls_privkey_st {
+    gnutls_pk_get_bits_func get_bits;
     gnutls_pk_generate_func generate_backend;
     gnutls_pk_import_privkey_x509_func import_privkey_x509_backend;
     gnutls_pk_import_privkey_url_func import_privkey_url_backend;
@@ -67,6 +68,7 @@ struct gnutls_privkey_st {
 
 struct gnutls_pubkey_st {
     gnutls_pk_generate_func generate_backend;
+    gnutls_pk_import_pubkey_func import_pubkey_backend;
     gnutls_pk_export_pubkey_func export_pubkey_backend;
     gnutls_pk_import_pubkey_url_func import_pubkey_url_backend;
     gnutls_pk_import_pubkey_x509_func import_pubkey_x509_backend;
