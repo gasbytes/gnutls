@@ -1432,6 +1432,20 @@ int gnutls_x509_privkey_import_ecc_raw(gnutls_x509_privkey_t key,
 		return 0;
 	}
 
+	const gnutls_crypto_pk_st *cc =
+		_gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->privkey_import_ecdh_raw_backend != NULL) {
+		ret = cc->privkey_import_ecdh_raw_backend(&key->pk_ctx, curve, x, y, k);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			key->params.algo = GNUTLS_PK_EC;
+			return 0;
+		}
+	}
+
 	if (_gnutls_mpi_init_scan_nz(&key->params.params[ECC_X], x->data,
 				     x->size)) {
 		gnutls_assert();
@@ -2200,6 +2214,8 @@ int gnutls_x509_privkey_generate2(gnutls_x509_privkey_t key,
 		key->pk_algorithm = algo;
 
 		gnutls_datum_t p, g, q;
+
+		q.size = 0;
 
 		if (algo == GNUTLS_PK_DH && bits == 0) {
 			gnutls_dh_params_t dh_params_copy = NULL;

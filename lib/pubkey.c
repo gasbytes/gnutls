@@ -891,6 +891,7 @@ int gnutls_pubkey_export(gnutls_pubkey_t key, gnutls_x509_crt_fmt_t format,
 			gnutls_assert();
 			return result;
 		} else if (result == 0) {
+			gnutls_free(pub_ctx);
 			if (format == GNUTLS_X509_FMT_PEM) {
 				result = gnutls_pem_base64_encode("PUBLIC_KEY",
 					&datum, output_data, output_data_size);
@@ -1394,6 +1395,16 @@ int gnutls_pubkey_export_ecc_raw2(gnutls_pubkey_t key,
 	}
 
 	/* ECDSA */
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_ECDSA);
+	if (cc != NULL && cc->pubkey_export_ecdh_raw_backend != NULL) {
+		ret = cc->pubkey_export_ecdh_raw_backend(key->pk_ctx, x, y);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			return 0;
+		}
+	}
 
 	/* X */
 	if (x) {
@@ -1938,6 +1949,29 @@ int gnutls_pubkey_import_ecc_raw(gnutls_pubkey_t key, gnutls_ecc_curve_t curve,
 		return GNUTLS_E_INVALID_REQUEST;
 	}
 
+	const gnutls_crypto_pk_st *cc =
+		_gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->pubkey_import_ecdh_raw_backend != NULL) {
+		ret = cc->pubkey_import_ecdh_raw_backend(&key->pk_ctx, curve, x, y);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			void *pub_ctx = NULL;
+			ret = cc->export_pubkey_backend(&pub_ctx,
+					key->pk_ctx, &key->params.raw_pub);
+			if (ret < 0) {
+				gnutls_assert();
+				return ret;
+			}
+
+			gnutls_free(pub_ctx);
+			key->params.algo = GNUTLS_PK_ECDSA;
+			return 0;
+		}
+	}
+
 	gnutls_pk_params_release(&key->params);
 	gnutls_pk_params_init(&key->params);
 
@@ -2293,6 +2327,8 @@ int gnutls_pubkey_import_dh_raw(gnutls_pubkey_t key,
 		goto cleanup;
 	}
 
+	key->params.algo = GNUTLS_PK_DH;
+	key->bits = _gnutls_pubkey_get_bits(key);
 
 	return 0;
 

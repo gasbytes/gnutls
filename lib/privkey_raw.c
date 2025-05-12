@@ -303,6 +303,17 @@ int gnutls_privkey_export_ecc_raw2(gnutls_privkey_t key,
 
 	gnutls_pk_params_init(&params);
 
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_ECDSA);
+	if (cc != NULL && cc->privkey_export_ecdh_raw_backend != NULL) {
+		ret = cc->privkey_export_ecdh_raw_backend(key->pk_ctx, x, y, k);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			return 0;
+		}
+	}
+
 	ret = _gnutls_privkey_get_mpis(key, &params);
 	if (ret < 0)
 		return gnutls_assert_val(ret);

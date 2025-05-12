@@ -302,7 +302,11 @@ typedef int (*gnutls_pk_verify_func)(void *ctx,
                                      const void *signature);
 typedef int (*gnutls_pk_derive_shared_secret_func)(void* pubkey_ctx, void* privkey_ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
 typedef int (*gnutls_pk_privkey_export_dh_raw_func)(void *ctx, const void *y, const void *x);
-typedef int (*gnutls_pk_pubkey_export_dh_raw_func)(void *ctx, const void*y);
+typedef int (*gnutls_pk_pubkey_export_dh_raw_func)(void *ctx, const void *y);
+typedef int (*gnutls_pk_privkey_import_ecdh_raw_func)(void *ctx, int curve, const void *x, const void *y, const void *k);
+typedef int (*gnutls_pk_pubkey_import_ecdh_raw_func)(void *ctx, int curve, const void *x, const void *y);
+typedef int (*gnutls_pk_privkey_export_ecdh_raw_func)(void *ctx, const void *x, const void *y, const void *k);
+typedef int (*gnutls_pk_pubkey_export_ecdh_raw_func)(void *ctx, const void *x, const void *y);
 typedef void (*gnutls_pk_deinit_func)(void *ctx);
 typedef int (*gnutls_pk_copy_func)(void **dst, void *src, gnutls_pk_algorithm_t algo);
 
