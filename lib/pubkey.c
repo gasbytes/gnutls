@@ -193,7 +193,34 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 	int result;
 
 	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
+
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (crt->raw_spki.data && cc != NULL && cc->import_pubkey_backend != NULL) {
+		gnutls_pk_algorithm_t *algo;
+
+		result = cc->import_pubkey_backend(&key->pk_ctx, &algo,
+						   &crt->raw_spki);
+		key->pk_algorithm = *algo;
+		key->params.algo = *algo;
+
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			/* now that we know the algorithm, we copy the context to the registered crypto backend to that same algorithm */
+			const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
+			if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
+				result = cc_algo->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
+				if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+					gnutls_assert();
+					return result;
+				} else if (result == 0) {
+					return 0;
+				}
+			}
+		}
+	}
 
     if (cc != NULL && cc->import_pubkey_x509_backend != NULL) {
 		gnutls_pk_algorithm_t *algo;

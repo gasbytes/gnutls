@@ -55,8 +55,13 @@ void doit(void)
 		rsa_size1 = 2048; /* minimum allowed */
 		rsa_size2 = 2048; /* minimum allowed */
 	} else {
+#ifndef GNUTLS_WOLFSSL
 		rsa_size1 = 512;
 		rsa_size2 = 1024;
+#else
+		rsa_size1 = 2048;
+		rsa_size2 = 3072;
+#endif
 	}
 
 	test_sig(GNUTLS_PK_RSA, GNUTLS_DIG_SHA1, rsa_size1);

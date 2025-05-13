@@ -1794,6 +1794,42 @@ int gnutls_x509_privkey_export2(gnutls_x509_privkey_t key,
 		return GNUTLS_E_INVALID_REQUEST;
 	}
 
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+	if (cc != NULL && cc->export_privkey_backend != NULL) {
+		ret = cc->export_privkey_backend(key->pk_ctx, out);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			if (format == GNUTLS_X509_FMT_PEM) {
+				size_t size = out->size * 2;
+				const char* header = "PRIVATE KEY";
+				gnutls_datum_t der = {
+					.data = out->data,
+					.size = out->size
+				};
+				out->data = gnutls_malloc(size);
+				if (out->data == NULL) {
+					gnutls_free(der.data);
+					return GNUTLS_E_MEMORY_ERROR;
+				}
+				if (key->pk_algorithm == GNUTLS_PK_RSA) {
+					header = "RSA PRIVATE KEY";
+                                }
+				ret = gnutls_pem_base64_encode(header,
+					&der, (char*)out->data, &size);
+				if (ret < 0) {
+					gnutls_assert();
+					return ret;
+				}
+				out->size = size;
+                        }
+			return 0;
+		}
+	}
+
+
 	if (key->key == NULL) { /* can only export in PKCS#8 form */
 		return gnutls_x509_privkey_export2_pkcs8(key, format, NULL, 0,
 							 out);
