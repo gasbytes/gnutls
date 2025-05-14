@@ -69,7 +69,7 @@ static void try_crypto(void)
 	assert(gnutls_x509_privkey_init(&privkey) == 0);
 	ret = gnutls_x509_privkey_generate(privkey, GNUTLS_PK_RSA, 512, 0);
 	if (ret < 0) {
-		fail("gnutls_x509_privkey_generate failed for 512-bit key\n");
+		fail("gnutls_x509_privkey_generate failed for 512-bit key, ret: %d\n", ret);
 	}
 	gnutls_x509_privkey_deinit(privkey);
 }

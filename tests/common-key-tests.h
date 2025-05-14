@@ -44,7 +44,7 @@ static const struct _key_tests_st common_key_tests[] = {
 	  .pk = GNUTLS_PK_RSA,
 	  .digest = GNUTLS_DIG_SHA256,
 	  .sigalgo = GNUTLS_SIGN_RSA_SHA256 },
-#ifdef ENABLE_DSA
+#if defined(ENABLE_DSA) && !defined(ENABLE_FIPS140)
 	{ .name = "dsa key",
 	  .key = { (void *)clidsa_ca3_key_pem, sizeof(clidsa_ca3_key_pem) - 1 },
 	  .cert = { (void *)clidsa_ca3_cert_pem,
@@ -78,6 +78,7 @@ static const struct _key_tests_st common_key_tests[] = {
 	  .digest = GNUTLS_DIG_SHA256,
 	  .sign_flags = GNUTLS_PRIVKEY_SIGN_FLAG_RSA_PSS,
 	  .sigalgo = GNUTLS_SIGN_RSA_PSS_SHA256 },
+#if !defined(ENABLE_FIPS140)
 	{ .name = "eddsa key",
 	  .key = { (void *)server_ca3_eddsa_key_pem,
 		   sizeof(server_ca3_eddsa_key_pem) - 1 },
@@ -87,6 +88,7 @@ static const struct _key_tests_st common_key_tests[] = {
 	  .digest = GNUTLS_DIG_SHA512,
 	  .sigalgo = GNUTLS_SIGN_EDDSA_ED25519,
 	  .data_only = 1 }
+#endif
 };
 
 #endif /* GNUTLS_TESTS_COMMON_KEY_TESTS_H */

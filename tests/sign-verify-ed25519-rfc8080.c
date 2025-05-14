@@ -38,6 +38,7 @@
 #include <gnutls/abstract.h>
 #include "utils.h"
 
+#if defined(GNUTLS_WOLFSSL) && !defined(ENABLE_FIPS140)
 /* verifies whether the sign-data and verify-data APIs
  * operate as expected */
 
@@ -137,3 +138,7 @@ void doit(void)
 
 	gnutls_global_deinit();
 }
+#else
+void doit(void) {
+}
+#endif

@@ -165,7 +165,7 @@ static void compute_key(const char *name, const gnutls_dh_params_t dh_params,
 {
 	gnutls_datum_t Z = { 0 };
 #ifndef GNUTLS_WOLFSSL
-	bool ok;
+    bool ok;
 #endif
 	int ret;
 	gnutls_privkey_t privkey = NULL;
@@ -389,24 +389,12 @@ void doit(void)
 			test_data[i].result.data == NULL ? NULL :
 							   &test_data[i].result;
 		gnutls_dh_params_t dh_params = NULL;
-		gnutls_fips140_context_t fips_context;
-		int ret;
-
-		if (gnutls_fips140_mode_enabled()) {
-			ret = gnutls_fips140_context_init(&fips_context);
-			if (ret < 0) {
-				fail("Cannot initialize FIPS context\n");
-			}
-		}
 
 		success("%s params\n", test_data[i].name);
 
-		fips_push_context(fips_context);
 		params(&dh_params, &test_data[i].prime, q,
 		       &test_data[i].generator,
 		       get_expected(&test_data[i].params_expected));
-		fips_pop_context(fips_context,
-				 test_data[i].params_expected.state);
 
 		if (get_expected(&test_data[i].params_expected) < 0) {
 			goto skip;
@@ -415,11 +403,8 @@ void doit(void)
 		if (test_data[i].priv_key.data == NULL) {
 			success("%s genkey\n", test_data[i].name);
 
-			fips_push_context(fips_context);
 			genkey(dh_params, &priv_key, &pub_key,
 			       get_expected(&test_data[i].genkey_expected));
-			fips_pop_context(fips_context,
-					 test_data[i].genkey_expected.state);
 
 			if (get_expected(&test_data[i].genkey_expected) < 0) {
 				goto skip;
@@ -431,7 +416,6 @@ void doit(void)
 
 		success("%s compute_key\n", test_data[i].name);
 
-		fips_push_context(fips_context);
 		compute_key(test_data[i].name, dh_params, &priv_key, &pub_key,
 			    &test_data[i].peer_key,
 			    get_expected(&test_data[i].import_expected),
@@ -439,19 +423,13 @@ void doit(void)
 			    result);
 
 		if (get_expected(&test_data[i].import_expected) < 0) {
-			fips_pop_context(fips_context,
-					 test_data[i].import_expected.state);
 			goto skip;
 		}
 
 		if (get_expected(&test_data[i].derive_expected) < 0) {
-			fips_pop_context(fips_context,
-					 test_data[i].derive_expected.state);
 			goto skip;
 		}
 
-		fips_pop_context(fips_context,
-				 test_data[i].derive_expected.state);
 
 	skip:
 		gnutls_dh_params_deinit(dh_params);
@@ -461,9 +439,6 @@ void doit(void)
 			gnutls_free(pub_key.data);
 		}
 
-		if (gnutls_fips140_mode_enabled()) {
-			gnutls_fips140_context_deinit(fips_context);
-		}
 	}
 
 	success("all ok\n");

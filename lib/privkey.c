@@ -1234,7 +1234,9 @@ int gnutls_privkey_sign_data(gnutls_privkey_t signer,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
     }
 
 	if (flags & GNUTLS_PRIVKEY_SIGN_FLAG_TLS1_RSA)
@@ -1299,7 +1301,9 @@ int gnutls_privkey_sign_data2(gnutls_privkey_t signer,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
     }
 
 	if (flags & GNUTLS_PRIVKEY_SIGN_FLAG_TLS1_RSA)
@@ -1373,7 +1377,9 @@ int gnutls_privkey_sign_hash2(gnutls_privkey_t signer,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		}else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
 	}
 
 	if (flags & GNUTLS_PRIVKEY_SIGN_FLAG_TLS1_RSA) {
@@ -1511,7 +1517,10 @@ int gnutls_privkey_sign_hash(gnutls_privkey_t signer,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
+
 	}
 
 	ret = _gnutls_privkey_get_spki_params(signer, &params);

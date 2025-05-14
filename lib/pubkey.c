@@ -351,7 +351,9 @@ int gnutls_pubkey_import_privkey(gnutls_pubkey_t key, gnutls_privkey_t pkey,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
     }
 
 	return _gnutls_privkey_get_public_mpis(pkey, &key->params);
@@ -2481,7 +2483,9 @@ int gnutls_pubkey_verify_data2(gnutls_pubkey_t pubkey,
 			return result;
 		} else if (result == 0) {
 			return 0;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
     }
 
 
@@ -2566,7 +2570,9 @@ int gnutls_pubkey_verify_hash2(gnutls_pubkey_t key,
 			return result;
 		} else if (result == 0) {
 			return 1;
-		}
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+            return result;
+        }
     }
 
 	if (key == NULL) {

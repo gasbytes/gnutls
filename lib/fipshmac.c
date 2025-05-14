@@ -86,12 +86,14 @@ static int print_lib(const char *path, const char *soname)
 		goto cleanup;
 	}
 
+#if !defined(GNUTLS_WOLFSSL)
 	ret = get_hmac(real_path, hmac, sizeof(hmac));
 	if (ret < 0) {
 		fprintf(stderr, "Could not calculate HMAC for %s: %s\n",
 			last_component(real_path), gnutls_strerror(ret));
 		goto cleanup;
 	}
+#endif
 
 	printf("[%s]\n", soname);
 	printf("path = %s\n", real_path);
