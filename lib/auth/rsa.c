@@ -136,10 +136,69 @@ int _gnutls_get_public_rsa_params(gnutls_session_t session,
 
 	gnutls_pk_params_init(params);
 
-	ret = _gnutls_pubkey_get_mpis(peer_cert.pubkey, params);
+	if (_gnutls_get_crypto_pk(GNUTLS_PK_RSA) == NULL) {
+		ret = _gnutls_pubkey_get_mpis(peer_cert.pubkey, params);
+		if (ret < 0) {
+			ret = gnutls_assert_val(GNUTLS_E_INTERNAL_ERROR);
+			goto cleanup2;
+		}
+	}
+
+	gnutls_pcert_deinit(&peer_cert);
+	return 0;
+
+cleanup2:
+	gnutls_pcert_deinit(&peer_cert);
+
+	return ret;
+}
+
+static int _gnutls_get_public_rsa(gnutls_session_t session, gnutls_pubkey_t pubkey)
+{
+	int ret;
+	cert_auth_info_t info;
+	unsigned key_usage;
+	gnutls_pcert_st peer_cert;
+	gnutls_certificate_type_t cert_type;
+
+	assert(!IS_SERVER(session));
+
+	/* normal non export case */
+
+	info = _gnutls_get_auth_info(session, GNUTLS_CRD_CERTIFICATE);
+
+	if (info == NULL || info->ncerts == 0) {
+		gnutls_assert();
+		return GNUTLS_E_INTERNAL_ERROR;
+	}
+	// Get the negotiated server certificate type
+	cert_type = get_certificate_type(session, GNUTLS_CTYPE_SERVER);
+
+	ret = _gnutls_get_auth_info_pcert(&peer_cert, cert_type, info);
+
 	if (ret < 0) {
-		ret = gnutls_assert_val(GNUTLS_E_INTERNAL_ERROR);
+		gnutls_assert();
+		return ret;
+	}
+
+	gnutls_pubkey_get_key_usage(peer_cert.pubkey, &key_usage);
+
+	ret = check_key_usage_for_enc(session, key_usage);
+	if (ret < 0) {
+		gnutls_assert();
 		goto cleanup2;
+	}
+
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_RSA);
+	if (cc != NULL && cc->copy_backend != NULL) {
+		ret = cc->copy_backend(&pubkey->pk_ctx,
+				       peer_cert.pubkey->pk_ctx, GNUTLS_PK_RSA);
+ 		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+ 			gnutls_assert(); 
+			return ret;
+ 		} else if (ret == 0) {
+			return 0;
+		}
 	}
 
 	gnutls_pcert_deinit(&peer_cert);
@@ -272,17 +331,32 @@ int _gnutls_gen_rsa_client_kx(gnutls_session_t session, gnutls_buffer_st *data)
 			session->internals.rsa_pms_version[1];
 	}
 
-	/* move RSA parameters to key (session).
-	 */
-	if ((ret = _gnutls_get_public_rsa_params(session, &params)) < 0) {
-		gnutls_assert();
-		return ret;
+	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(GNUTLS_PK_RSA);
+	if (cc != NULL && cc->copy_backend != NULL) {
+		gnutls_pubkey_t pubkey;
+
+		gnutls_pubkey_init(&pubkey);
+		if ((ret = _gnutls_get_public_rsa(session, pubkey)) < 0) {
+			gnutls_assert();
+			return ret;
+		}
+        	ret = gnutls_pubkey_encrypt_data(pubkey, 0, &session->key.key,
+					 	&sdata);
+		gnutls_pubkey_deinit(pubkey);
+	} else {
+		/* move RSA parameters to key (session).
+	 	*/
+		if ((ret = _gnutls_get_public_rsa_params(session,
+							 &params)) < 0) {
+			gnutls_assert();
+			return ret;
+		}
+
+		ret = _gnutls_pk_encrypt(GNUTLS_PK_RSA, &sdata,
+					 &session->key.key, &params);
+
+		gnutls_pk_params_release(&params);
 	}
-
-	ret = _gnutls_pk_encrypt(GNUTLS_PK_RSA, &sdata, &session->key.key,
-				 &params);
-
-	gnutls_pk_params_release(&params);
 
 	if (ret < 0)
 		return gnutls_assert_val(ret);

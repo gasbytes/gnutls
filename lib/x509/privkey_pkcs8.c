@@ -659,6 +659,14 @@ int gnutls_x509_privkey_export2_pkcs8(gnutls_x509_privkey_t key,
 		return GNUTLS_E_INVALID_REQUEST;
 	}
 
+	if (password == NULL) {
+		ret = gnutls_x509_privkey_export2(key, format, out);
+		if (ret < 0) {
+			gnutls_assert();
+			return ret;
+		}
+	}
+
 	/* Get the private key info
 	 * tmp holds the DER encoding.
 	 */

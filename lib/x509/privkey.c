@@ -108,6 +108,20 @@ int gnutls_x509_privkey_cpy(gnutls_x509_privkey_t dst,
 	if (!src || !dst)
 		return GNUTLS_E_INVALID_REQUEST;
 
+        const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(src->pk_algorithm);
+        if (cc != NULL && cc->copy_backend != NULL) {
+                ret = cc->copy_backend(&dst->pk_ctx, src->pk_ctx,
+				       src->pk_algorithm);
+                if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+                        gnutls_assert();
+                        return ret;
+                } else if (ret == 0) {
+			dst->pk_algorithm = src->pk_algorithm;
+			dst->params.algo = src->params.algo;
+                        return 0;
+                }
+        }
+
 	ret = _gnutls_pk_params_copy(&dst->params, &src->params);
 	if (ret < 0) {
 		return gnutls_assert_val(ret);

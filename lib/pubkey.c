@@ -997,10 +997,40 @@ int gnutls_pubkey_export2(gnutls_pubkey_t key, gnutls_x509_crt_fmt_t format,
 {
 	int result;
 	asn1_node spk = NULL;
+	const gnutls_crypto_pk_st *cc;
 
 	if (key == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
+	}
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->export_pubkey_backend != NULL) {
+		void* pub_ctx;
+
+		result = cc->export_pubkey_backend(&pub_ctx, key->pk_ctx,
+						   out);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			gnutls_free(pub_ctx);
+			if (format == GNUTLS_X509_FMT_PEM) {
+				gnutls_datum_t datum = {
+					.data = out->data,
+					.size = out->size
+				};
+				result = gnutls_pem_base64_encode2("PUBLIC_KEY",
+					&datum, out);
+				gnutls_free(datum.data);
+				if (result < 0) {
+					out->data = NULL;
+					gnutls_assert();
+					return result;
+				}
+			}
+			return 0;
+		}
 	}
 
 	if ((result = asn1_create_element(_gnutls_get_pkix(),

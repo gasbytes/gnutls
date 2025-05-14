@@ -164,7 +164,9 @@ static void compute_key(const char *name, const gnutls_dh_params_t dh_params,
 			const gnutls_datum_t *result)
 {
 	gnutls_datum_t Z = { 0 };
+#ifndef GNUTLS_WOLFSSL
 	bool ok;
+#endif
 	int ret;
 	gnutls_privkey_t privkey = NULL;
 	gnutls_pubkey_t pubkey = NULL;
