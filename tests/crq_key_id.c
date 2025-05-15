@@ -103,6 +103,9 @@ void doit(void)
 		}
 
 		pkey_key_id = malloc(sizeof(unsigned char) * pkey_key_id_len);
+		if (pkey_key_id == NULL) {
+			fail("memory allocation failure");
+		}
 		ret = gnutls_x509_privkey_get_key_id(pkey, 0, pkey_key_id,
 						     &pkey_key_id_len);
 		if (ret != GNUTLS_E_SUCCESS) {
@@ -157,6 +160,9 @@ void doit(void)
 		}
 
 		crq_key_id = malloc(sizeof(unsigned char) * crq_key_id_len);
+		if (crq_key_id == NULL) {
+			fail("memory allocation failure");
+		}
 		ret = gnutls_x509_crq_get_key_id(crq, 0, crq_key_id,
 						 &crq_key_id_len);
 		if (ret != GNUTLS_E_SUCCESS) {

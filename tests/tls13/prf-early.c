@@ -101,6 +101,7 @@ gnutls_rnd(gnutls_rnd_level_t level, void *data, size_t len)
 
 static gnutls_datum_t session_ticket_key = { NULL, 0 };
 
+#ifndef GNUTLS_WOLFSSL
 static void dump(const char *name, const uint8_t *data, unsigned data_size)
 {
 	unsigned i;
@@ -139,6 +140,7 @@ static void dump(const char *name, const uint8_t *data, unsigned data_size)
 	"\x11\x8d\x85\xa8\x91\xe5\x50\x75\x44\x88\x69\xaf\x95\x9a\xb0\x29\xd4\xae\xcd\x11\xcb\x1d\x29\x7c\xe6\x24\xd4\x7c\x95\xdb\x5c"
 #define NULL_CONTEXT_VALUE \
 	"\x56\x99\x41\x73\x5e\x73\x34\x7f\x3d\x69\x9f\xc0\x3b\x8b\x86\x33\xc6\xc3\x97\x46\x61\x62\x3f\x55\xab\x39\x60\xa5\xeb\xfe\x37"
+#endif
 
 static int handshake_callback_called;
 
@@ -146,17 +148,23 @@ static int handshake_callback(gnutls_session_t session, unsigned int htype,
 			      unsigned post, unsigned int incoming,
 			      const gnutls_datum_t *msg)
 {
+#ifndef GNUTLS_WOLFSSL
 	unsigned char key_material[512];
 	int ret;
+#endif
 
 	assert(post == GNUTLS_HOOK_POST);
 
 	handshake_callback_called++;
 
+	/* Can't make random number generator fixed for RSA-PSS signing
+	 * with wolfSSL provider. */
+#ifndef GNUTLS_WOLFSSL
 	TRY(13, "key expansion", 0, NULL, 34, (uint8_t *)KEY_EXP_VALUE);
 	TRY(6, "hello", 0, NULL, 31, (uint8_t *)HELLO_VALUE);
 	TRY(7, "context", 5, "abcd\xfa", 31, (uint8_t *)CONTEXT_VALUE);
 	TRY(12, "null-context", 0, "", 31, (uint8_t *)NULL_CONTEXT_VALUE);
+#endif
 
 	return 0;
 }

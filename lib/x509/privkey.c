@@ -573,11 +573,17 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 	int result = 0, need_free = 0;
 	gnutls_datum_t _data;
 
+	if (key == NULL) {
+		gnutls_assert();
+		return GNUTLS_E_INVALID_REQUEST;
+	}
+
 	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
     if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
 		gnutls_pk_algorithm_t *algo;
+		gnutls_ecc_curve_t curve;
 
 		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
 		if (algo == NULL) {
@@ -585,10 +591,11 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 			return GNUTLS_E_MEMORY_ERROR;
 		}
 
-		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, data, format, NULL, NULL);
+		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, &curve, data, format, NULL, NULL);
 
 		key->pk_algorithm = *algo;
 		key->params.algo = *algo;
+		key->params.curve = curve;
 
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
@@ -607,11 +614,6 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 			}
 		}
     }
-
-	if (key == NULL) {
-		gnutls_assert();
-		return GNUTLS_E_INVALID_REQUEST;
-	}
 
 	_data.data = data->data;
 	_data.size = data->size;
@@ -1336,6 +1338,7 @@ int gnutls_x509_privkey_import_dh_raw(gnutls_x509_privkey_t key,
 
 	if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
 		gnutls_pk_algorithm_t *algo;
+		gnutls_ecc_curve_t curve;
 
 		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
 		if (algo == NULL) {
@@ -1343,11 +1346,12 @@ int gnutls_x509_privkey_import_dh_raw(gnutls_x509_privkey_t key,
 			return GNUTLS_E_MEMORY_ERROR;
 		}
 
-		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo,
+		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, &curve,
 							 NULL, GNUTLS_X509_FMT_DER, y, x);
 
 		key->pk_algorithm = *algo;
 		key->params.algo = *algo;
+		key->params.curve = curve;
 
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
@@ -2596,6 +2600,18 @@ cleanup:
 int gnutls_x509_privkey_verify_params(gnutls_x509_privkey_t key)
 {
 	int ret;
+	const gnutls_crypto_pk_st *cc;
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->verify_privkey_params_backend != NULL) {
+		ret = cc->verify_privkey_params_backend(key->pk_ctx);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			return 0;
+		}
+	}
 
 	ret = _gnutls_pk_verify_priv_params(key->params.algo, &key->params);
 	if (ret < 0) {

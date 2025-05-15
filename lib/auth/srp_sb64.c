@@ -179,7 +179,9 @@ inline static int decode(uint8_t *result, const uint8_t *data)
 	uint8_t a1, a2;
 	int ret = 3;
 
-	memset(result, 0, 3);
+	result[0] = 0;
+	result[1] = 0;
+	result[2] = 0;
 
 	a1 = TOASCII(data[3]);
 	a2 = TOASCII(data[2]);

@@ -508,6 +508,8 @@ static void verify_response(gnutls_datum_t *nonce)
 	gnutls_x509_crt_t chain[MAX_CHAIN_SIZE];
 	unsigned chain_size = 0, i;
 
+	memset(chain, 0, sizeof(chain));
+
 	if (HAVE_OPT(LOAD_RESPONSE))
 		dat.data = (void *)read_file(OPT_ARG(LOAD_RESPONSE), RF_BINARY,
 					     &size);

@@ -91,6 +91,7 @@ gnutls_rnd(gnutls_rnd_level_t level, void *data, size_t len)
 	return 0;
 }
 
+#ifndef GNUTLS_WOLFSSL
 static void dump(const char *name, const uint8_t *data, unsigned data_size)
 {
 	unsigned i;
@@ -150,6 +151,7 @@ static void dump(const char *name, const uint8_t *data, unsigned data_size)
 	"\xe6\xc0\x57\xbe\xda\x28\x9c\xc7\xf6\x4f\xb6\x18\x92\xce\x10\xf6\xe1\x5e\xab\x10\xc8\xd1\x94\xf8\xac\xc7\x3e\x93\xde\x57\x12"
 #define NULL_CONTEXT_VALUE \
 	"\xaf\xea\xd2\x64\xc9\x42\xbd\xe7\xdb\xf0\xd3\x16\x84\x39\xf3\xdb\x5d\x4f\x0e\x5e\x71\x1e\xc0\xd7\x23\xde\x8b\x1e\x80\xa1\xca"
+#endif
 static void check_prfs(gnutls_session_t session)
 {
 	unsigned char key_material[512];
@@ -161,6 +163,9 @@ static void check_prfs(gnutls_session_t session)
 		exit(77);
 	}
 
+	/* Can't make random number generator fixed for RSA-PSS signing
+         * with wolfSSL provider. */
+#ifndef GNUTLS_WOLFSSL
 	TRY_OLD(13, "key expansion", 34, (uint8_t *)KEY_EXP_VALUE);
 	TRY_OLD(6, "hello", 31, (uint8_t *)HELLO_VALUE);
 
@@ -168,6 +173,7 @@ static void check_prfs(gnutls_session_t session)
 	TRY(6, "hello", 0, NULL, 31, (uint8_t *)HELLO_VALUE);
 	TRY(7, "context", 5, "abcd\xfa", 31, (uint8_t *)CONTEXT_VALUE);
 	TRY(12, "null-context", 0, "", 31, (uint8_t *)NULL_CONTEXT_VALUE);
+#endif
 
 	/* Try whether calling gnutls_prf() with non-null context or server-first
 	 * param, will fail */

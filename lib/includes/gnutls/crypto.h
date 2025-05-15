@@ -268,13 +268,16 @@ typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
 
 typedef int (*gnutls_pk_import_pubkey_func)(void **ctx,
 					    gnutls_pk_algorithm_t **algo,
+					    gnutls_ecc_curve_t *curve,
 					    const gnutls_datum_t * data);
 typedef int (*gnutls_pk_export_pubkey_func)(void **pub_key_ctx, void *priv_key_ctx, const void* pubkey);
 typedef int (*gnutls_pk_export_privkey_func)(void *priv_key_ctx, const void* pubkey);
-typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
+typedef int (*gnutls_pk_import_privkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo, gnutls_ecc_curve_t *curve,
         const gnutls_datum_t * data, gnutls_x509_crt_fmt_t format, const void *y, const void *x);
 typedef int (*gnutls_pk_import_pubkey_x509_func)(void **ctx, gnutls_pk_algorithm_t **algo,
-        gnutls_datum_t * data, unsigned int flags, const void *y, const void *x);
+	gnutls_datum_t * data, unsigned int flags, const void *y, const void *x);
+typedef int (*gnutls_pk_verify_privkey_params_func)(void *ctx);
+typedef int (*gnutls_pk_verify_pubkey_params_func)(void *ctx);
 typedef int (*gnutls_pk_pubkey_encrypt_func)(void *ctx, gnutls_pubkey_t key, const gnutls_datum_t * plaintext, gnutls_datum_t * ciphertext);
 typedef int (*gnutls_pk_privkey_decrypt_func)(void *ctx, gnutls_privkey_t key, const gnutls_datum_t * ciphertext, gnutls_datum_t * plaintext);
 typedef int (*gnutls_pk_import_privkey_url_func)(void **ctx, const void *privkey, const char *url);

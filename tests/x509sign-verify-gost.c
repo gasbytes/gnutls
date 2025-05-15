@@ -42,7 +42,9 @@
 
 #include "utils.h"
 
+#ifdef ENABLE_GOST
 #include "x509sign-verify-common.h"
+#endif
 
 void doit(void)
 {
