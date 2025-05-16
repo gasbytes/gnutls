@@ -34,5 +34,6 @@
 
 int _gnutls_get_public_rsa_params(gnutls_session_t session,
 				  gnutls_pk_params_st *params);
+int _gnutls_get_public_rsa(gnutls_session_t session, gnutls_pubkey_t pubkey);
 
 #endif /* GNUTLS_LIB_AUTH_RSA_COMMON_H */

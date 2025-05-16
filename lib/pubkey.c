@@ -196,6 +196,10 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 
 	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
 
+	ret = gnutls_x509_crt_get_key_usage(crt, &key->key_usage, NULL);
+	if (ret < 0)
+		key->key_usage = 0;
+
     const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
 	if (crt->raw_spki.data && cc != NULL && cc->import_pubkey_backend != NULL) {
@@ -266,10 +270,6 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 		return gnutls_assert_val(ret);
 
 	key->params.algo = ret;
-
-	ret = gnutls_x509_crt_get_key_usage(crt, &key->key_usage, NULL);
-	if (ret < 0)
-		key->key_usage = 0;
 
 	ret = _gnutls_x509_crt_get_mpis(crt, &key->params);
 	if (ret < 0) {

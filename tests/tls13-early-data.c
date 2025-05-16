@@ -106,7 +106,7 @@ static const gnutls_datum_t hsrnd = {
 	32
 };
 
-static int gnutls_rnd_works;
+static int gnutls_rnd_works = 0;
 
 int __attribute__((visibility("protected")))
 gnutls_rnd(gnutls_rnd_level_t level, void *data, size_t len)
@@ -334,24 +334,30 @@ static void check_secrets(const struct secret *secrets, size_t count,
 			     secrets[i].secret_read,
 			     expected->secrets[i].secret_read);
 		}
+/* Fixed random cannot be used with wolfSSL provider. */
+#ifndef GNUTLS_WOLFSSL
 		if (expected->secrets[i].secret_read &&
 		    memcmp(secrets[i].secret_read,
 			   expected->secrets[i].secret_read,
 			   secrets[i].secret_size) != 0) {
 			fail("unexpected secret for read\n");
 		}
+#endif
 		if ((secrets[i].secret_write == NULL) !=
 		    (expected->secrets[i].secret_write == NULL)) {
 			fail("unexpected secret for write: %p != %p\n",
 			     secrets[i].secret_write,
 			     expected->secrets[i].secret_write);
 		}
+/* Fixed random cannot be used with wolfSSL provider. */
+#ifndef GNUTLS_WOLFSSL
 		if (expected->secrets[i].secret_write &&
 		    memcmp(secrets[i].secret_write,
 			   expected->secrets[i].secret_write,
 			   secrets[i].secret_size) != 0) {
 			fail("unexpected secret for write\n");
 		}
+#endif
 	}
 }
 

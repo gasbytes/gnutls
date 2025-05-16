@@ -169,21 +169,42 @@ static int _gnutls_gen_rsa_psk_client_kx(gnutls_session_t session,
 			session->internals.rsa_pms_version[1];
 	}
 
-	/* move RSA parameters to key (session).
-	 */
-	if ((ret = _gnutls_get_public_rsa_params(session, &params)) < 0) {
-		gnutls_assert();
-		return ret;
-	}
+	if (_gnutls_get_crypto_pk(GNUTLS_PK_RSA) != NULL) {
+		gnutls_pubkey_t pubkey;
+        	if ((ret = gnutls_pubkey_init(&pubkey)) != 0) {
+			gnutls_assert();
+			return ret;
+		}
+		if ((ret = _gnutls_get_public_rsa(session, pubkey)) != 0) {
+			gnutls_assert();
+			return ret;
+		}
+        	if ((ret = gnutls_pubkey_encrypt_data(pubkey, 0,
+						      &premaster_secret,
+						      &sdata)) < 0) {
+			gnutls_assert();
+			return ret;
+		}
+        	gnutls_pubkey_deinit(pubkey);
+	} else {
+		/* move RSA parameters to key (session).
+	 	*/
+		if ((ret = _gnutls_get_public_rsa_params(session,
+							 &params)) < 0) {
+			gnutls_assert();
+			return ret;
+		}
 
-	/* Encrypt premaster secret */
-	if ((ret = _gnutls_pk_encrypt(GNUTLS_PK_RSA, &sdata, &premaster_secret,
-				      &params)) < 0) {
-		gnutls_assert();
-		return ret;
-	}
+		/* Encrypt premaster secret */
+		if ((ret = _gnutls_pk_encrypt(GNUTLS_PK_RSA, &sdata,
+					      &premaster_secret,
+					      &params)) < 0) {
+			gnutls_assert();
+			return ret;
+		}
 
-	gnutls_pk_params_release(&params);
+		gnutls_pk_params_release(&params);
+	}
 
 	cred = (gnutls_psk_client_credentials_t)_gnutls_get_cred(
 		session, GNUTLS_CRD_PSK);

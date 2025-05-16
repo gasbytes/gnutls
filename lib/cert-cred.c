@@ -1020,6 +1020,10 @@ int _gnutls_check_key_cert_match(gnutls_certificate_credentials_t res)
 		dig = GNUTLS_DIG_STREEBOG_256;
 	else if (pk == GNUTLS_PK_GOST_12_512)
 		dig = GNUTLS_DIG_STREEBOG_512;
+	else if (pk == GNUTLS_PK_EDDSA_ED25519)
+		dig = GNUTLS_DIG_SHA512;
+	else if (pk == GNUTLS_PK_EDDSA_ED448)
+		dig = GNUTLS_DIG_SHAKE_128;
 	else
 		dig = GNUTLS_DIG_SHA256;
 

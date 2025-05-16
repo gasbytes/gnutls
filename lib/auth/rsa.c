@@ -153,7 +153,7 @@ cleanup2:
 	return ret;
 }
 
-static int _gnutls_get_public_rsa(gnutls_session_t session, gnutls_pubkey_t pubkey)
+int _gnutls_get_public_rsa(gnutls_session_t session, gnutls_pubkey_t pubkey)
 {
 	int ret;
 	cert_auth_info_t info;
