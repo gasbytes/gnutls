@@ -39,7 +39,9 @@ typedef struct {
 } files_st;
 
 files_st files[] = { { "client.p12", "foobar" },
+#ifdef ENABLED_DSA
 		     { "cert-ca.p12", "1234" }, /* 2 certs, one is a CA */
+#endif
 		     { "pkcs12_2certs.p12", "" }, /* 2 certs, on is unrelated */
 		     { NULL, NULL } };
 

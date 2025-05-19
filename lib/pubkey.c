@@ -99,8 +99,16 @@ unsigned pubkey_to_bits(const gnutls_pk_params_st *params)
  **/
 int gnutls_pubkey_get_pk_algorithm(gnutls_pubkey_t key, unsigned int *bits)
 {
-	if (bits)
-		*bits = key->bits;
+	if (bits) {
+		const gnutls_crypto_pk_st *cc;
+		cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+		if (cc != NULL && cc->get_bits != NULL) {
+			cc->get_bits(key->pk_ctx, bits);
+		}
+		else {
+			*bits = key->bits;
+		}
+	}
 
 	return key->params.algo;
 }
@@ -208,8 +216,10 @@ int gnutls_pubkey_import_x509(gnutls_pubkey_t key, gnutls_x509_crt_t crt,
 
 		result = cc->import_pubkey_backend(&key->pk_ctx, &algo,
 						   &curve, &crt->raw_spki);
-		key->pk_algorithm = *algo;
-		key->params.algo = *algo;
+		if (algo != NULL) {
+			key->pk_algorithm = *algo;
+			key->params.algo = *algo;
+		}
 		key->params.curve = curve;
 
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
@@ -2491,7 +2501,7 @@ int gnutls_pubkey_verify_data2(gnutls_pubkey_t pubkey,
 
     if (cc != NULL && cc->verify_backend != NULL) {
 		result = cc->verify_backend(pubkey->pk_ctx,
-				&pubkey->params.raw_pub, algo, data, signature);
+			&pubkey->params.raw_pub, algo, data, signature, flags);
 		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return result;

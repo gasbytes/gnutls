@@ -55,6 +55,8 @@ static int sign_verify_data(gnutls_x509_privkey_t pkey,
 	/* sign arbitrary data */
 	assert(gnutls_privkey_init(&privkey) >= 0);
 
+	signature.data = NULL;
+	signature.size = 0;
 	pk = gnutls_sign_get_pk_algorithm(algo);
 	dig = gnutls_sign_get_hash_algorithm(algo);
 

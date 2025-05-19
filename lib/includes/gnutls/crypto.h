@@ -303,7 +303,8 @@ typedef int (*gnutls_pk_verify_func)(void *ctx,
                                      const void *pubkey,
                                      gnutls_sign_algorithm_t hash,
                                      const void *data,
-                                     const void *signature);
+                                     const void *signature,
+				     unsigned int flags);
 typedef int (*gnutls_pk_derive_shared_secret_func)(void* pubkey_ctx, void* privkey_ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
 typedef int (*gnutls_pk_privkey_export_dh_raw_func)(void *ctx, const void *y, const void *x);
 typedef int (*gnutls_pk_pubkey_export_dh_raw_func)(void *ctx, const void *y);

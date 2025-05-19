@@ -2063,6 +2063,18 @@ int gnutls_privkey_verify_params(gnutls_privkey_t key)
 {
 	gnutls_pk_params_st params;
 	int ret;
+	const gnutls_crypto_pk_st *cc;
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->verify_privkey_params_backend != NULL) {
+		ret = cc->verify_privkey_params_backend(key->pk_ctx);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return ret;
+		} else if (ret == 0) {
+			return 0;
+		}
+	}
 
 	gnutls_pk_params_init(&params);
 
