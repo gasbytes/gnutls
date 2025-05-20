@@ -1756,10 +1756,29 @@ cleanup:
 int gnutls_x509_crt_set_pubkey(gnutls_x509_crt_t crt, gnutls_pubkey_t key)
 {
 	int result;
+	const gnutls_crypto_pk_st *cc;
 
 	if (crt == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
+	}
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->export_pubkey_backend != NULL) {
+		gnutls_datum_t datum = {
+			.data = NULL,
+			.size = 0
+		};
+
+		result = cc->export_pubkey_backend(&crt->pk_ctx, key->pk_ctx,
+						   &datum);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			gnutls_free(datum.data);
+			return 0;
+		}
 	}
 
 	result = _gnutls_x509_encode_and_copy_PKI_params(
@@ -1792,10 +1811,29 @@ int gnutls_x509_crt_set_pubkey(gnutls_x509_crt_t crt, gnutls_pubkey_t key)
 int gnutls_x509_crq_set_pubkey(gnutls_x509_crq_t crq, gnutls_pubkey_t key)
 {
 	int result;
+	const gnutls_crypto_pk_st *cc;
 
 	if (crq == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
+	}
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->export_pubkey_backend != NULL) {
+		gnutls_datum_t datum = {
+			.data = NULL,
+			.size = 0
+		};
+
+		result = cc->export_pubkey_backend(&crq->pk_ctx, key->pk_ctx,
+						   &datum);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			gnutls_free(datum.data);
+			return 0;
+		}
 	}
 
 	result = _gnutls_x509_encode_and_copy_PKI_params(

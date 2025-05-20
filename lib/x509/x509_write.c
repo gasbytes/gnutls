@@ -220,6 +220,7 @@ int gnutls_x509_crt_set_version(gnutls_x509_crt_t crt, unsigned int version)
 int gnutls_x509_crt_set_key(gnutls_x509_crt_t crt, gnutls_x509_privkey_t key)
 {
 	int result;
+        const gnutls_crypto_pk_st *cc;
 
 	if (crt == NULL) {
 		gnutls_assert();
@@ -227,6 +228,24 @@ int gnutls_x509_crt_set_key(gnutls_x509_crt_t crt, gnutls_x509_privkey_t key)
 	}
 
 	MODIFIED(crt);
+
+        cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+        if (cc != NULL && cc->export_pubkey_backend != NULL) {
+                gnutls_datum_t datum = {
+                        .data = NULL,
+                        .size = 0
+                };
+
+                result = cc->export_pubkey_backend(&crt->pk_ctx, key->pk_ctx,
+                                                   &datum);
+                if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+                        gnutls_assert();
+                        return result;
+                } else if (result == 0) {
+                        gnutls_free(datum.data);
+                        return 0;
+                }
+        }
 
 	result = _gnutls_x509_encode_and_copy_PKI_params(
 		crt->cert, "tbsCertificate.subjectPublicKeyInfo", &key->params);
