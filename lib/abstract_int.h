@@ -31,6 +31,8 @@ typedef int (*gnutls_privkey_pk_params_func)(gnutls_privkey_t key,
 
 struct gnutls_privkey_st {
     gnutls_pk_get_bits_func get_bits;
+    gnutls_pk_get_spki_func get_spki;
+    gnutls_pk_set_spki_func set_spki;
     gnutls_pk_generate_func generate_backend;
     gnutls_pk_import_privkey_x509_func import_privkey_x509_backend;
     gnutls_pk_import_privkey_url_func import_privkey_url_backend;

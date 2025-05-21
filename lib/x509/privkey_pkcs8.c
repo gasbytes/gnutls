@@ -140,6 +140,18 @@ inline static int _encode_privkey(gnutls_x509_privkey_t pkey,
 	case GNUTLS_PK_RSA_PSS:
 	case GNUTLS_PK_RSA_OAEP:
 	case GNUTLS_PK_ECDSA:
+		const gnutls_crypto_pk_st *cc;
+		cc = _gnutls_get_crypto_pk(pkey->params.algo);
+		if (cc != NULL && cc->export_privkey_backend != NULL) {
+			ret = cc->export_privkey_backend(pkey->pk_ctx, raw);
+			if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+				gnutls_assert();
+				goto error;
+			} else if (ret == 0) {
+                        	return 0;
+			}
+		}
+
 		ret = _gnutls_x509_export_int2(pkey->key, GNUTLS_X509_FMT_DER,
 					       "", raw);
 		if (ret < 0) {
@@ -657,14 +669,6 @@ int gnutls_x509_privkey_export2_pkcs8(gnutls_x509_privkey_t key,
 	if (key == NULL) {
 		gnutls_assert();
 		return GNUTLS_E_INVALID_REQUEST;
-	}
-
-	if (password == NULL) {
-		ret = gnutls_x509_privkey_export2(key, format, out);
-		if (ret < 0) {
-			gnutls_assert();
-			return ret;
-		}
 	}
 
 	/* Get the private key info

@@ -549,6 +549,163 @@ error:
 
 #define MAX_PEM_HEADER_SIZE 25
 
+static int privkey_pem_to_der(gnutls_x509_privkey_t key,
+			      const gnutls_datum_t *data, gnutls_datum_t *_data,
+			      int *need_free)
+{
+	int result;
+	unsigned left;
+	char *ptr;
+	uint8_t *begin_ptr;
+
+	ptr = memmem(data->data, data->size, "PRIVATE KEY-----",
+		     sizeof("PRIVATE KEY-----") - 1);
+
+	result = GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
+
+	if (ptr != NULL) {
+		left = data->size -
+		       ((ptrdiff_t)ptr - (ptrdiff_t)data->data);
+
+		if (data->size - left > MAX_PEM_HEADER_SIZE) {
+			ptr -= MAX_PEM_HEADER_SIZE;
+			left += MAX_PEM_HEADER_SIZE;
+		} else {
+			ptr = (char *)data->data;
+			left = data->size;
+		}
+
+		ptr = memmem(ptr, left, "-----BEGIN ",
+			     sizeof("-----BEGIN ") - 1);
+		if (ptr != NULL) {
+			begin_ptr = (uint8_t *)ptr;
+			left = data->size - ((ptrdiff_t)begin_ptr -
+					     (ptrdiff_t)data->data);
+
+			ptr += sizeof("-----BEGIN ") - 1;
+
+			if (left > sizeof(PEM_KEY_RSA) &&
+			    memcmp(ptr, PEM_KEY_RSA,
+				   sizeof(PEM_KEY_RSA) - 1) == 0) {
+				result = _gnutls_fbase64_decode(
+					PEM_KEY_RSA, begin_ptr, left,
+					_data);
+				if (result >= 0)
+					key->params.algo =
+						GNUTLS_PK_RSA;
+			} else if (left > sizeof(PEM_KEY_ECC) &&
+				   memcmp(ptr, PEM_KEY_ECC,
+					  sizeof(PEM_KEY_ECC) - 1) ==
+					   0) {
+				result = _gnutls_fbase64_decode(
+					PEM_KEY_ECC, begin_ptr, left,
+					_data);
+				if (result >= 0)
+					key->params.algo = GNUTLS_PK_EC;
+			} else if (left > sizeof(PEM_KEY_DSA) &&
+				   memcmp(ptr, PEM_KEY_DSA,
+					  sizeof(PEM_KEY_DSA) - 1) ==
+					   0) {
+				result = _gnutls_fbase64_decode(
+					PEM_KEY_DSA, begin_ptr, left,
+					_data);
+				if (result >= 0)
+					key->params.algo =
+						GNUTLS_PK_DSA;
+			} else if (left > sizeof(PEM_KEY_ML_DSA) &&
+				   memcmp(ptr, PEM_KEY_ML_DSA,
+					  sizeof(PEM_KEY_ML_DSA) - 1) ==
+					   0) {
+				result = _gnutls_fbase64_decode(
+					PEM_KEY_ML_DSA, begin_ptr, left,
+					_data);
+				if (result >= 0) {
+					key->params.algo =
+						GNUTLS_PK_MLDSA44;
+				}
+			}
+
+			if (key->params.algo == GNUTLS_PK_UNKNOWN &&
+			    left >= sizeof(PEM_KEY_PKCS8)) {
+				if (memcmp(ptr, PEM_KEY_PKCS8,
+					   sizeof(PEM_KEY_PKCS8) - 1) ==
+				    0) {
+					result = _gnutls_fbase64_decode(
+						PEM_KEY_PKCS8,
+						begin_ptr, left,
+						_data);
+					if (result >= 0) {
+						/* signal for PKCS #8 keys */
+						key->params.algo = -1;
+					}
+				}
+			}
+		}
+	}
+
+	if (result < 0) {
+		gnutls_assert();
+		return result;
+	}
+
+	*need_free = 1;
+	return 0;
+}
+
+static int _gnutls_x509_privkey_import_provider(gnutls_x509_privkey_t key,
+						const gnutls_datum_t *data,
+						gnutls_x509_crt_fmt_t format)
+{
+	int result;
+	const gnutls_crypto_pk_st *cc;
+	gnutls_pk_algorithm_t *algo;
+	gnutls_ecc_curve_t curve;
+
+ 	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc == NULL || cc->import_privkey_x509_backend == NULL ||
+			cc->copy_backend == NULL) {
+		return GNUTLS_E_ALGO_NOT_SUPPORTED;
+	}
+
+	algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
+	if (algo == NULL) {
+		gnutls_assert();
+		return GNUTLS_E_MEMORY_ERROR;
+	}
+
+	result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, &curve,
+						 data, format, NULL, NULL);
+
+	key->pk_algorithm = *algo;
+	key->params.algo = *algo;
+	key->params.curve = curve;
+
+	if (result == GNUTLS_E_ALGO_NOT_SUPPORTED) {
+		return result;
+	}
+	if (result < 0) {
+		gnutls_assert();
+		return result;
+	}
+
+	result = cc->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
+	if (result == GNUTLS_E_ALGO_NOT_SUPPORTED) {
+		return result;
+	}
+	if (result < 0) {
+		gnutls_assert();
+		return result;
+	}
+
+	if (cc->get_spki != NULL) {
+		cc->get_spki(key->pk_ctx, &key->params.spki.pk,
+			     &key->params.spki.rsa_pss_dig,
+			     &key->params.spki.salt_size);
+	}
+
+	return 0;
+}
+
 /**
  * gnutls_x509_privkey_import:
  * @key: The data to store the parsed key
@@ -579,145 +736,24 @@ int gnutls_x509_privkey_import(gnutls_x509_privkey_t key,
 	}
 
 	key->pk_algorithm = GNUTLS_PK_UNKNOWN;
-    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
-
-    if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
-		gnutls_pk_algorithm_t *algo;
-		gnutls_ecc_curve_t curve;
-
-		algo = gnutls_malloc(sizeof(gnutls_pk_algorithm_t));
-		if (algo == NULL) {
-			gnutls_assert();
-			return GNUTLS_E_MEMORY_ERROR;
-		}
-
-		result = cc->import_privkey_x509_backend(&key->pk_ctx, &algo, &curve, data, format, NULL, NULL);
-
-		key->pk_algorithm = *algo;
-		key->params.algo = *algo;
-		key->params.curve = curve;
-
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			/* now that we know the algorithm, we copy the context to the registered crypto backend to that same algorithm */
-			const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
-			if (cc_algo != NULL && cc_algo->copy_backend != NULL) {
-				result = cc_algo->copy_backend(&key->pk_ctx, key->pk_ctx, key->pk_algorithm);
-				if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-					gnutls_assert();
-					return result;
-				} else if (result == 0) {
-					return 0;
-				}
-			}
-		}
-    }
+	key->params.algo = GNUTLS_PK_UNKNOWN;
 
 	_data.data = data->data;
 	_data.size = data->size;
 
-	key->params.algo = GNUTLS_PK_UNKNOWN;
-
 	/* If the Certificate is in PEM format then decode it
 	 */
 	if (format == GNUTLS_X509_FMT_PEM) {
-		unsigned left;
-		char *ptr;
-		uint8_t *begin_ptr;
-
-		ptr = memmem(data->data, data->size, "PRIVATE KEY-----",
-			     sizeof("PRIVATE KEY-----") - 1);
-
-		result = GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
-
-		if (ptr != NULL) {
-			left = data->size -
-			       ((ptrdiff_t)ptr - (ptrdiff_t)data->data);
-
-			if (data->size - left > MAX_PEM_HEADER_SIZE) {
-				ptr -= MAX_PEM_HEADER_SIZE;
-				left += MAX_PEM_HEADER_SIZE;
-			} else {
-				ptr = (char *)data->data;
-				left = data->size;
-			}
-
-			ptr = memmem(ptr, left, "-----BEGIN ",
-				     sizeof("-----BEGIN ") - 1);
-			if (ptr != NULL) {
-				begin_ptr = (uint8_t *)ptr;
-				left = data->size - ((ptrdiff_t)begin_ptr -
-						     (ptrdiff_t)data->data);
-
-				ptr += sizeof("-----BEGIN ") - 1;
-
-				if (left > sizeof(PEM_KEY_RSA) &&
-				    memcmp(ptr, PEM_KEY_RSA,
-					   sizeof(PEM_KEY_RSA) - 1) == 0) {
-					result = _gnutls_fbase64_decode(
-						PEM_KEY_RSA, begin_ptr, left,
-						&_data);
-					if (result >= 0)
-						key->params.algo =
-							GNUTLS_PK_RSA;
-				} else if (left > sizeof(PEM_KEY_ECC) &&
-					   memcmp(ptr, PEM_KEY_ECC,
-						  sizeof(PEM_KEY_ECC) - 1) ==
-						   0) {
-					result = _gnutls_fbase64_decode(
-						PEM_KEY_ECC, begin_ptr, left,
-						&_data);
-					if (result >= 0)
-						key->params.algo = GNUTLS_PK_EC;
-				} else if (left > sizeof(PEM_KEY_DSA) &&
-					   memcmp(ptr, PEM_KEY_DSA,
-						  sizeof(PEM_KEY_DSA) - 1) ==
-						   0) {
-					result = _gnutls_fbase64_decode(
-						PEM_KEY_DSA, begin_ptr, left,
-						&_data);
-					if (result >= 0)
-						key->params.algo =
-							GNUTLS_PK_DSA;
-				} else if (left > sizeof(PEM_KEY_ML_DSA) &&
-					   memcmp(ptr, PEM_KEY_ML_DSA,
-						  sizeof(PEM_KEY_ML_DSA) - 1) ==
-						   0) {
-					result = _gnutls_fbase64_decode(
-						PEM_KEY_ML_DSA, begin_ptr, left,
-						&_data);
-					if (result >= 0) {
-						key->params.algo =
-							GNUTLS_PK_MLDSA44;
-					}
-				}
-
-				if (key->params.algo == GNUTLS_PK_UNKNOWN &&
-				    left >= sizeof(PEM_KEY_PKCS8)) {
-					if (memcmp(ptr, PEM_KEY_PKCS8,
-						   sizeof(PEM_KEY_PKCS8) - 1) ==
-					    0) {
-						result = _gnutls_fbase64_decode(
-							PEM_KEY_PKCS8,
-							begin_ptr, left,
-							&_data);
-						if (result >= 0) {
-							/* signal for PKCS #8 keys */
-							key->params.algo = -1;
-						}
-					}
-				}
-			}
-		}
-
-		if (result < 0) {
-			gnutls_assert();
+		if ((result = privkey_pem_to_der(key, data, &_data,
+						 &need_free)) != 0) {
 			return result;
 		}
+	}
 
-		need_free = 1;
+	result = _gnutls_x509_privkey_import_provider(key, &_data,
+						      GNUTLS_X509_FMT_DER);
+	if (result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+		goto cleanup;
 	}
 
 	if (key->expanded) {
@@ -1709,6 +1745,7 @@ int gnutls_x509_privkey_set_spki(gnutls_x509_privkey_t key,
 {
 	gnutls_pk_params_st tparams;
 	int ret;
+	const gnutls_crypto_pk_st *cc;
 
 	if (key == NULL) {
 		gnutls_assert();
@@ -1717,6 +1754,15 @@ int gnutls_x509_privkey_set_spki(gnutls_x509_privkey_t key,
 
 	if (!_gnutls_pk_are_compat(key->params.algo, spki->pk))
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
+
+	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->set_spki != NULL) {
+		ret = cc->set_spki(key->pk_ctx, spki->pk, spki->rsa_pss_dig,
+				   spki->salt_size, spki->flags);
+		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			return ret;
+		}
+	}
 
 	memcpy(&tparams, &key->params, sizeof(gnutls_pk_params_st));
 	/* No need for a deep copy, as this is only for one time check */
@@ -1848,7 +1894,7 @@ int gnutls_x509_privkey_export2(gnutls_x509_privkey_t key,
 				}
 				if (key->pk_algorithm == GNUTLS_PK_RSA) {
 					header = "RSA PRIVATE KEY";
-                                }
+				}
 				ret = gnutls_pem_base64_encode(header,
 					&der, (char*)out->data, &size);
 				if (ret < 0) {
@@ -1856,7 +1902,7 @@ int gnutls_x509_privkey_export2(gnutls_x509_privkey_t key,
 					return ret;
 				}
 				out->size = size;
-                        }
+			}
 			return 0;
 		}
 	}

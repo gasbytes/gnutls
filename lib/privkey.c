@@ -1040,6 +1040,7 @@ int gnutls_privkey_export_x509(gnutls_privkey_t pkey,
 			       gnutls_x509_privkey_t *key)
 {
 	int ret;
+	const gnutls_crypto_pk_st *cc;
 
 	*key = NULL;
 	if (pkey->type != GNUTLS_PRIVKEY_X509) {
@@ -1051,10 +1052,10 @@ int gnutls_privkey_export_x509(gnutls_privkey_t pkey,
 	if (ret < 0)
 		return gnutls_assert_val(ret);
 
-	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 
+	cc  = _gnutls_get_crypto_pk(pkey->pk_algorithm);
 	if (cc != NULL && cc->copy_backend != NULL) {
-		ret = cc->copy_backend(&(*key)->pk_ctx, pkey->pk_ctx,
+		ret = cc->copy_backend(&(*key)->pk_ctx, pkey->key.x509->pk_ctx,
 				       pkey->pk_algorithm);
 		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_x509_privkey_deinit(*key);
@@ -1062,7 +1063,11 @@ int gnutls_privkey_export_x509(gnutls_privkey_t pkey,
 			return ret;
 		}
 		if (ret == 0) {
-			(*key)->pk_algorithm = pkey->pk_algorithm;
+			(*key)->pk_algorithm = pkey->key.x509->params.algo;
+			(*key)->params.algo = pkey->key.x509->params.algo;
+                        memcpy(&(*key)->params.spki,
+			       &pkey->key.x509->params.spki,
+			       sizeof(gnutls_x509_spki_st));
 			return 0;
 		}
 	}
@@ -1290,28 +1295,43 @@ int gnutls_privkey_sign_data2(gnutls_privkey_t signer,
 	const gnutls_sign_entry_st *se;
 	int result;
 
-    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(signer->pk_algorithm);
-
-    if (cc != NULL && cc->sign_backend != NULL) {
-		se = _gnutls_sign_to_entry(algo);
-		gnutls_digest_algorithm_t hash = se->hash;
-        result = cc->sign_backend(signer->pk_ctx, &signer->key.x509->params.raw_priv, hash, data, signature, flags, algo);
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			return 0;
-		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
-            return result;
-        }
-    }
-
 	if (flags & GNUTLS_PRIVKEY_SIGN_FLAG_TLS1_RSA)
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 
 	se = _gnutls_sign_to_entry(algo);
 	if (se == NULL)
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
+
+	ret = _gnutls_privkey_get_spki_params(signer, &params);
+	if (ret < 0) {
+		gnutls_assert();
+		return ret;
+	}
+
+	ret = _gnutls_privkey_update_spki_params(signer, se->pk, se->hash,
+						 flags, &params);
+	if (ret < 0) {
+		gnutls_assert();
+		return ret;
+	}
+
+    	const gnutls_crypto_pk_st *cc;
+
+	cc = _gnutls_get_crypto_pk(signer->pk_algorithm);
+	if (cc != NULL && cc->sign_backend != NULL) {
+		gnutls_digest_algorithm_t hash = se->hash;
+		result = cc->sign_backend(signer->pk_ctx,
+					  &signer->key.x509->params.raw_priv,
+					  hash, data, signature, flags, algo);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 0;
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+			return result;
+		}
+	}
 
 	ret = _gnutls_privkey_get_spki_params(signer, &params);
 	if (ret < 0) {
