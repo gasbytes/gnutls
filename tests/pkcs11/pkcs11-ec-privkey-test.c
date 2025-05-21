@@ -203,6 +203,39 @@ void doit(void)
 
 	assert(gnutls_privkey_init(&pkey) == 0);
 
+    /* Since we just imported the private key in PKCS1#11 into the HSM,
+     * we can't extract it later on in order to actually have it inside the
+     * pk_ctx in the provider.
+     * So we need to first import it in our provider correctly, so that
+     * the later operations succeeds.
+     * The final key will still be in pkcs11 format, this is just a workaround
+     * to make the test work against the provider. */
+#if defined(GNUTLS_WOLFSSL)
+	ret = gnutls_x509_privkey_init(&key);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_init: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	ret = gnutls_x509_privkey_import(key, &server_ecc_key,
+					 GNUTLS_X509_FMT_PEM);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_import: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+    ret = gnutls_privkey_import_x509(pkey, key, 0);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_privkey_import_x509: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	gnutls_x509_privkey_deinit(key);
+#endif
+
 	ret = gnutls_privkey_import_pkcs11_url(
 		pkey,
 		SOFTHSM_URL ";object=cert;object-type=private;pin-value=" PIN);

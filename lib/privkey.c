@@ -1943,15 +1943,6 @@ int gnutls_privkey_import_url(gnutls_privkey_t key, const char *url,
 {
 	unsigned i;
 	int ret;
-    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
-
-    if (cc != NULL && cc->import_privkey_url_backend != NULL) {
-        if (cc->import_privkey_url_backend(&key->pk_ctx, key, url) < 0) {
-            return gnutls_assert_val(-1);
-        }
-
-        return 0;
-    }
 
 	for (i = 0; i < _gnutls_custom_urls_size; i++) {
 		if (strncmp(url, _gnutls_custom_urls[i].name,

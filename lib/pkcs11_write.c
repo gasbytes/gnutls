@@ -432,6 +432,7 @@ int gnutls_pkcs11_copy_pubkey(const char *token_url, gnutls_pubkey_t pubkey,
 	unsigned a_val;
 	ck_key_type_t type;
 	struct pkcs11_session_info sinfo;
+    int result;
 
 	PKCS11_CHECK_INIT;
 
@@ -450,6 +451,53 @@ int gnutls_pkcs11_copy_pubkey(const char *token_url, gnutls_pubkey_t pubkey,
 		gnutls_assert();
 		return ret;
 	}
+
+#if defined(GNUTLS_WOLFSSL)
+	gnutls_datum_t data;
+	gnutls_datum_t _data;
+    asn1_node spk;
+
+
+    /* We first retrieve the DER formatted public key. */
+    const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(pubkey->pk_algorithm);
+
+    if (cc_algo != NULL && cc_algo->export_pubkey_x509_backend != NULL) {
+        result = cc_algo->export_pubkey_x509_backend(pubkey->pk_ctx, &data);
+        if (result < 0) {
+            gnutls_assert();
+            return result;
+        }
+    }
+
+    /* Now that we have the public key in DER format, we import it directly into
+     * the internal struct (gnutls_pubkey_t) */
+    _data.data = data.data;
+    _data.size = data.size;
+
+	if ((result = asn1_create_element(_gnutls_get_pkix(),
+					"PKIX1.SubjectPublicKeyInfo",
+					&spk)) != ASN1_SUCCESS) {
+		gnutls_assert();
+		result = _gnutls_asn2err(result);
+		goto cleanup;
+	}
+
+	result = _asn1_strict_der_decode(&spk, _data.data, _data.size, NULL);
+	if (result != ASN1_SUCCESS) {
+		gnutls_assert();
+		result = _gnutls_asn2err(result);
+		goto cleanup;
+	}
+
+	result = _gnutls_get_asn_mpis(spk, "", &pubkey->params);
+	if (result < 0) {
+		gnutls_assert();
+		goto cleanup;
+	}
+
+	pubkey->bits = pubkey_to_bits(&pubkey->params);
+	result = 0;
+#endif
 
 	a[0].type = CKA_CLASS;
 	a[0].value = &class;
@@ -681,6 +729,7 @@ int gnutls_pkcs11_copy_x509_privkey2(const char *token_url,
 	gnutls_datum_t p, q, g, y, x;
 	gnutls_datum_t m, e, d, u, exp1, exp2;
 	struct pkcs11_session_info sinfo;
+	int result;
 
 	PKCS11_CHECK_INIT;
 
@@ -711,6 +760,70 @@ int gnutls_pkcs11_copy_x509_privkey2(const char *token_url,
 		gnutls_assert();
 		return ret;
 	}
+
+#if defined(GNUTLS_WOLFSSL)
+	gnutls_datum_t data;
+    gnutls_x509_crt_fmt_t format = GNUTLS_X509_FMT_DER;
+	gnutls_datum_t _data;
+
+    /* We first retrieve the DER formatted private key. */
+    const gnutls_crypto_pk_st *cc_algo = _gnutls_get_crypto_pk(key->pk_algorithm);
+
+    if (cc_algo != NULL && cc_algo->export_privkey_x509_backend != NULL) {
+        result = cc_algo->export_privkey_x509_backend(key->pk_ctx, &data);
+        if (result < 0) {
+            gnutls_assert();
+            return result;
+        }
+    }
+
+    _data.data = data.data;
+    _data.size = data.size;
+
+    /* Now that we have the exported key in DER format, we import it since it's
+     * not present the gnutls_x509_privkey_t struct. */
+	if (key->expanded) {
+		_gnutls_x509_privkey_reinit(key);
+	}
+	key->expanded = 1;
+
+	if (key->params.algo == GNUTLS_PK_RSA) {
+		key->key = _gnutls_privkey_decode_pkcs1_rsa_key(&_data, key);
+		if (key->key == NULL)
+			gnutls_assert();
+	} else if (key->params.algo == GNUTLS_PK_EC) {
+		result = _gnutls_privkey_decode_ecc_key(&key->key, &_data, key,
+				0);
+		if (result < 0) {
+			gnutls_assert();
+			key->key = NULL;
+		}
+	} else {
+		result = gnutls_x509_privkey_import_pkcs8(
+				key, &data, format, NULL, GNUTLS_PKCS_PLAIN);
+		if (result < 0) {
+			gnutls_assert();
+			key->key = NULL;
+			goto cleanup;
+		} else {
+			/* some keys under PKCS#8 don't set key->key (ed25519) */
+			goto finish;
+		}
+    }
+
+    if (key->key == NULL) {
+        gnutls_assert();
+        result = GNUTLS_E_ASN1_DER_ERROR;
+        goto cleanup;
+    }
+
+finish:
+	result =
+		_gnutls_pk_fixup(key->params.algo, GNUTLS_IMPORT, &key->params);
+	if (result < 0) {
+		gnutls_assert();
+	}
+#endif
 
 	pk = gnutls_x509_privkey_get_pk_algorithm(key);
 	FIX_KEY_USAGE(pk, key_usage);
