@@ -140,6 +140,7 @@ inline static int _encode_privkey(gnutls_x509_privkey_t pkey,
 	case GNUTLS_PK_RSA_PSS:
 	case GNUTLS_PK_RSA_OAEP:
 	case GNUTLS_PK_ECDSA:
+	{
 		const gnutls_crypto_pk_st *cc;
 		cc = _gnutls_get_crypto_pk(pkey->params.algo);
 		if (cc != NULL && cc->export_privkey_backend != NULL) {
@@ -160,6 +161,7 @@ inline static int _encode_privkey(gnutls_x509_privkey_t pkey,
 		}
 
 		break;
+	}
 	case GNUTLS_PK_DSA:
 		/* DSAPublicKey == INTEGER */
 		if ((ret = asn1_create_element(_gnutls_get_gnutls_asn(),
