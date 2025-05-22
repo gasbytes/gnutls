@@ -262,12 +262,8 @@ int gnutls_crypto_register_mac(
 	gnutls_mac_fast_func hash_fast) _GNUTLS_GCC_ATTR_DEPRECATED;
 
 typedef int (*gnutls_pk_get_bits_func)(void *ctx, unsigned int *bits);
-typedef int (*gnutls_pk_get_spki_func)(void *ctx, gnutls_pk_algorithm_t *algo,
-				       gnutls_digest_algorithm_t *dig,
-				       unsigned int *salt);
-typedef int (*gnutls_pk_set_spki_func)(void *ctx, gnutls_pk_algorithm_t algo,
-				       gnutls_digest_algorithm_t dig,
-				       unsigned int salt, int flags);
+typedef int (*gnutls_pk_get_spki_func)(void *ctx, void *spki);
+typedef int (*gnutls_pk_set_spki_func)(void *ctx, void *spki);
 typedef int (*gnutls_pk_generate_func)(void **ctx, const void *privkey,
                                           gnutls_pk_algorithm_t algo,
                                           unsigned int bits, const void* p, const void* g, const void* q);
@@ -294,23 +290,27 @@ typedef int (*gnutls_pk_sign_func)(void *ctx,
                                    const void *data,
                                    const void *signature,
                                    unsigned int flags,
-                                   gnutls_sign_algorithm_t algo);
+                                   gnutls_sign_algorithm_t algo,
+				   void *spki);
 typedef int (*gnutls_pk_sign_hash_func)(void *ctx, const void *privkey,
                                       gnutls_digest_algorithm_t hash_algo,
                                       const gnutls_datum_t *hash_data,
                                       gnutls_datum_t *signature,
                                       unsigned int flags,
-                                      gnutls_sign_algorithm_t algo);
+                                      gnutls_sign_algorithm_t algo,
+				      void *spki);
 typedef int (*gnutls_pk_verify_hash_func)(void *ctx, const void *pubkey,
                                         gnutls_sign_algorithm_t algo,
                                         const gnutls_datum_t *hash,
-                                        const gnutls_datum_t *signature);
+                                        const gnutls_datum_t *signature,
+					void *spki);
 typedef int (*gnutls_pk_verify_func)(void *ctx,
                                      const void *pubkey,
                                      gnutls_sign_algorithm_t hash,
                                      const void *data,
                                      const void *signature,
-				     unsigned int flags);
+				     unsigned int flags,
+				     void *spki);
 typedef int (*gnutls_pk_derive_shared_secret_func)(void* pubkey_ctx, void* privkey_ctx, const void *privkey, const void *pubkey, const gnutls_datum_t *nonce, gnutls_datum_t *secret);
 typedef int (*gnutls_pk_privkey_export_dh_raw_func)(void *ctx, const void *y, const void *x);
 typedef int (*gnutls_pk_pubkey_export_dh_raw_func)(void *ctx, const void *y);

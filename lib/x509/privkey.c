@@ -698,9 +698,7 @@ static int _gnutls_x509_privkey_import_provider(gnutls_x509_privkey_t key,
 	}
 
 	if (cc->get_spki != NULL) {
-		cc->get_spki(key->pk_ctx, &key->params.spki.pk,
-			     &key->params.spki.rsa_pss_dig,
-			     &key->params.spki.salt_size);
+		cc->get_spki(key->pk_ctx, &key->params.spki);
 	}
 
 	return 0;
@@ -1757,8 +1755,7 @@ int gnutls_x509_privkey_set_spki(gnutls_x509_privkey_t key,
 
 	cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 	if (cc != NULL && cc->set_spki != NULL) {
-		ret = cc->set_spki(key->pk_ctx, spki->pk, spki->rsa_pss_dig,
-				   spki->salt_size, spki->flags);
+		ret = cc->set_spki(key->pk_ctx, spki);
 		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			return ret;
 		}

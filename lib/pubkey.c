@@ -2535,22 +2535,6 @@ int gnutls_pubkey_verify_data2(gnutls_pubkey_t pubkey,
 		return GNUTLS_E_INVALID_REQUEST;
 	}
 
-    cc = _gnutls_get_crypto_pk(pubkey->pk_algorithm);
-
-    if (cc != NULL && cc->verify_backend != NULL) {
-		result = cc->verify_backend(pubkey->pk_ctx,
-			&pubkey->params.raw_pub, algo, data, signature, flags);
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			return 0;
-		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
-            return result;
-        }
-    }
-
-
 	if (flags & GNUTLS_VERIFY_USE_TLS1_RSA)
 		return gnutls_assert_val(GNUTLS_E_INVALID_REQUEST);
 
@@ -2573,6 +2557,24 @@ int gnutls_pubkey_verify_data2(gnutls_pubkey_t pubkey,
 	params.pk = se->pk;
 	if (flags & GNUTLS_VERIFY_RSA_PSS_FIXED_SALT_LENGTH) {
 		params.flags |= GNUTLS_PK_FLAG_RSA_PSS_FIXED_SALT_LENGTH;
+	}
+
+	cc = _gnutls_get_crypto_pk(pubkey->pk_algorithm);
+
+	if (cc != NULL && cc->verify_backend != NULL) {
+		result = cc->verify_backend(pubkey->pk_ctx,
+			&pubkey->params.raw_pub, algo, data, signature, flags,
+			&params);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			_gnutls_x509_spki_clear(&params);
+			return 0;
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+			_gnutls_x509_spki_clear(&params);
+			return result;
+		}
 	}
 
 	ret = pubkey_verify_data(se, me, data, signature, &pubkey->params,
@@ -2617,20 +2619,7 @@ int gnutls_pubkey_verify_hash2(gnutls_pubkey_t key,
 	const gnutls_sign_entry_st *se;
 	int ret;
 	int result;
-
-    const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
-
-    if (cc != NULL && cc->verify_hash_backend != NULL) {
-		result = cc->verify_hash_backend(key->pk_ctx, key, algo, hash, signature);
-		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
-			gnutls_assert();
-			return result;
-		} else if (result == 0) {
-			return 1;
-		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
-            return result;
-        }
-    }
+	const gnutls_crypto_pk_st *cc;
 
 	if (key == NULL) {
 		gnutls_assert();
@@ -2644,6 +2633,20 @@ int gnutls_pubkey_verify_hash2(gnutls_pubkey_t key,
 	ret = _gnutls_x509_spki_copy(&params, &key->params.spki);
 	if (ret < 0)
 		return gnutls_assert_val(ret);
+
+	cc  = _gnutls_get_crypto_pk(key->pk_algorithm);
+	if (cc != NULL && cc->verify_hash_backend != NULL) {
+		result = cc->verify_hash_backend(key->pk_ctx, key, algo, hash,
+						 signature, &params);
+		if (result < 0 && result != GNUTLS_E_ALGO_NOT_SUPPORTED) {
+			gnutls_assert();
+			return result;
+		} else if (result == 0) {
+			return 1;
+		} else if (result > 0 && gnutls_fips140_mode_enabled()) {
+			return result;
+		}
+	}
 
 	if (flags & GNUTLS_VERIFY_USE_TLS1_RSA) {
 		if (!GNUTLS_PK_IS_RSA(key->params.algo)) {
