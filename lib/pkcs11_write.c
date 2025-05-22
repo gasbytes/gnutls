@@ -787,7 +787,7 @@ int gnutls_pkcs11_copy_x509_privkey2(const char *token_url,
 	}
 	key->expanded = 1;
 
-	if (key->params.algo == GNUTLS_PK_RSA) {
+	if (key->params.algo == GNUTLS_PK_RSA || key->params.algo == GNUTLS_PK_RSA_PSS) {
 		key->key = _gnutls_privkey_decode_pkcs1_rsa_key(&_data, key);
 		if (key->key == NULL)
 			gnutls_assert();
