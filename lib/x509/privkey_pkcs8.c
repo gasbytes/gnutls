@@ -143,8 +143,8 @@ inline static int _encode_privkey(gnutls_x509_privkey_t pkey,
 	{
 		const gnutls_crypto_pk_st *cc;
 		cc = _gnutls_get_crypto_pk(pkey->params.algo);
-		if (cc != NULL && cc->export_privkey_backend != NULL) {
-			ret = cc->export_privkey_backend(pkey->pk_ctx, raw);
+		if (cc != NULL && cc->export_privkey_x509_backend != NULL) {
+			ret = cc->export_privkey_x509_backend(pkey->pk_ctx, raw);
 			if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 				gnutls_assert();
 				goto error;
