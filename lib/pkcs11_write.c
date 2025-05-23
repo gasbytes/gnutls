@@ -479,20 +479,23 @@ int gnutls_pkcs11_copy_pubkey(const char *token_url, gnutls_pubkey_t pubkey,
 					&spk)) != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
-		goto cleanup;
+        asn1_delete_structure(&spk);
+        return result;
 	}
 
 	result = _asn1_strict_der_decode(&spk, _data.data, _data.size, NULL);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
-		goto cleanup;
+        asn1_delete_structure(&spk);
+        return result;
 	}
 
 	result = _gnutls_get_asn_mpis(spk, "", &pubkey->params);
 	if (result < 0) {
 		gnutls_assert();
-		goto cleanup;
+        asn1_delete_structure(&spk);
+		return result;
 	}
 
 	pubkey->bits = pubkey_to_bits(&pubkey->params);
