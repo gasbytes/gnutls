@@ -2081,7 +2081,18 @@ int gnutls_pubkey_import_ecc_raw(gnutls_pubkey_t key, gnutls_ecc_curve_t curve,
 			}
 
 			gnutls_free(pub_ctx);
-			key->params.algo = GNUTLS_PK_ECDSA;
+            if (curve == GNUTLS_ECC_CURVE_ED25519) {
+                key->params.algo = GNUTLS_PK_EDDSA_ED25519;
+            } else if (curve == GNUTLS_ECC_CURVE_ED448) {
+                key->params.algo = GNUTLS_PK_EDDSA_ED448;
+            } else if (curve == GNUTLS_ECC_CURVE_X25519) {
+                key->params.algo = GNUTLS_PK_ECDH_X25519;
+            } else if (curve == GNUTLS_ECC_CURVE_X448) {
+                key->params.algo = GNUTLS_PK_ECDH_X448;
+            } else {
+                key->params.algo = GNUTLS_PK_ECDSA;
+            }
+
 			return 0;
 		}
 	}

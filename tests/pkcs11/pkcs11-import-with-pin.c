@@ -171,6 +171,39 @@ void doit(void)
 	gnutls_privkey_deinit(pkey);
 	assert(gnutls_privkey_init(&pkey) == 0);
 
+    /* Since we just imported the private key in PKCS1#11 into the HSM,
+     * we can't extract it later on in order to actually have it inside the
+     * pk_ctx in the provider.
+     * So we need to first import it in our provider correctly, so that
+     * the later operations succeeds.
+     * The final key will still be in pkcs11 format, this is just a workaround
+     * to make the test work against the provider. */
+#if defined(GNUTLS_WOLFSSL)
+	ret = gnutls_x509_privkey_init(&key);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_init: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	ret = gnutls_x509_privkey_import(key, &server_ecc_key,
+					 GNUTLS_X509_FMT_PEM);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_import: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+    ret = gnutls_privkey_import_x509(pkey, key, 0);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_privkey_import_x509: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	gnutls_x509_privkey_deinit(key);
+#endif
+
 	/* Test 2
 	 * Try importing with pin-value */
 	ret = gnutls_privkey_import_pkcs11_url(
@@ -188,6 +221,14 @@ void doit(void)
 	gnutls_free(sig.data);
 	gnutls_privkey_deinit(pkey);
 
+	/* Reset PKCS#11 state to clear any cached authentication */
+	gnutls_pkcs11_deinit();
+	ret = gnutls_pkcs11_add_provider(lib, "trusted");
+	if (ret < 0) {
+		fprintf(stderr, "add_provider: %s\n", gnutls_strerror(ret));
+		exit(1);
+	}
+
 	/* Test 3
 	 * Try importing with wrong pin-source */
 	track_temp_files();
@@ -196,6 +237,33 @@ void doit(void)
 	write_pin(file, "XXXX");
 
 	assert(gnutls_privkey_init(&pkey) == 0);
+
+#if defined(GNUTLS_WOLFSSL)
+	ret = gnutls_x509_privkey_init(&key);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_init: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	ret = gnutls_x509_privkey_import(key, &server_ecc_key,
+					 GNUTLS_X509_FMT_PEM);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_import: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+    ret = gnutls_privkey_import_x509(pkey, key, 0);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_privkey_import_x509: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	gnutls_x509_privkey_deinit(key);
+#endif
+
 	snprintf(buf, sizeof(buf),
 		 "%s;object=cert;object-type=private;pin-source=%s",
 		 SOFTHSM_URL, file);
@@ -213,6 +281,33 @@ void doit(void)
 	write_pin(file, PIN);
 
 	assert(gnutls_privkey_init(&pkey) == 0);
+
+#if defined(GNUTLS_WOLFSSL)
+	ret = gnutls_x509_privkey_init(&key);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_init: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	ret = gnutls_x509_privkey_import(key, &server_ecc_key,
+					 GNUTLS_X509_FMT_PEM);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_x509_privkey_import: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+    ret = gnutls_privkey_import_x509(pkey, key, 0);
+	if (ret < 0) {
+		fprintf(stderr, "gnutls_privkey_import_x509: %s\n",
+			gnutls_strerror(ret));
+		exit(1);
+	}
+
+	gnutls_x509_privkey_deinit(key);
+#endif
+
 	snprintf(buf, sizeof(buf),
 		 "%s;object=cert;object-type=private;pin-source=%s",
 		 SOFTHSM_URL, file);

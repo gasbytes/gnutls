@@ -1871,8 +1871,8 @@ int gnutls_x509_privkey_export2(gnutls_x509_privkey_t key,
 
 	const gnutls_crypto_pk_st *cc = _gnutls_get_crypto_pk(key->pk_algorithm);
 
-	if (cc != NULL && cc->export_privkey_backend != NULL) {
-		ret = cc->export_privkey_backend(key->pk_ctx, out);
+	if (cc != NULL && cc->export_privkey_x509_backend != NULL) {
+		ret = cc->export_privkey_x509_backend(key->pk_ctx, out);
 		if (ret < 0 && ret != GNUTLS_E_ALGO_NOT_SUPPORTED) {
 			gnutls_assert();
 			return ret;
