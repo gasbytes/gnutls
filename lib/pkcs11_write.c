@@ -728,7 +728,7 @@ int gnutls_pkcs11_copy_x509_privkey2(const char *token_url,
 	ck_object_handle_t ctx;
 	ck_key_type_t type;
 	int a_val;
-	gnutls_pk_algorithm_t pk;
+	gnutls_pk_algorithm_t pk = GNUTLS_PK_UNKNOWN;
 	gnutls_datum_t p, q, g, y, x;
 	gnutls_datum_t m, e, d, u, exp1, exp2;
 	struct pkcs11_session_info sinfo;
