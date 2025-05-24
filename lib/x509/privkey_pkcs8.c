@@ -985,6 +985,17 @@ static int _decode_pkcs8_rsa_key(asn1_node pkcs8_asn,
 	}
 
 	pkey->key = _gnutls_privkey_decode_pkcs1_rsa_key(&tmp, pkey);
+	{
+		const gnutls_crypto_pk_st *cc;
+		cc = _gnutls_get_crypto_pk(pkey->params.algo);
+		if (cc != NULL && cc->import_privkey_x509_backend != NULL) {
+			gnutls_pk_algorithm_t *algo;
+			gnutls_ecc_curve_t curve;
+			cc->import_privkey_x509_backend(&pkey->pk_ctx,
+				&algo, &curve, &tmp, GNUTLS_X509_FMT_DER,
+				NULL, NULL);
+		}
+	}
 	_gnutls_free_key_datum(&tmp);
 
 	if (pkey->key == NULL) {
